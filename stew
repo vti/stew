@@ -13,6 +13,7 @@ my $opt_repo;
 my $opt_os;
 my $opt_arch;
 my $opt_build;
+my $opt_dry_run;
 my $opt_verbose;
 GetOptions(
     "prefix=s" => \$opt_prefix,
@@ -20,6 +21,7 @@ GetOptions(
     "os=s"     => \$opt_os,
     "arch=s"   => \$opt_arch,
     "build=s"  => \$opt_build,
+    "dry-run"  => \$opt_dry_run,
     "verbose"  => \$opt_verbose,
 ) or die("Error in command line arguments\n");
 
@@ -189,10 +191,11 @@ sub _log {
 }
 
 sub _system {
-    _log(@_) if $opt_verbose;
-
     my $redirect = $opt_verbose ? '' : '> /dev/null';
-    system("sh -c \"$_[0]\" 2>&1 | tee -a $build_dir/stew.log $redirect");
+    my $cmd = "sh -c \"$_[0]\" 2>&1 | tee -a $build_dir/stew.log $redirect";
+
+    _log($cmd) if $opt_verbose;
+    system($cmd) unless $opt_dry_run;
 }
 
 sub _slurp {
