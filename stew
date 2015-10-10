@@ -14,15 +14,17 @@ my $opt_os;
 my $opt_arch;
 my $opt_build;
 my $opt_dry_run;
+my $opt_keep_downloads;
 my $opt_verbose;
 GetOptions(
-    "prefix=s" => \$opt_prefix,
-    "repo=s"   => \$opt_repo,
-    "os=s"     => \$opt_os,
-    "arch=s"   => \$opt_arch,
-    "build=s"  => \$opt_build,
-    "dry-run"  => \$opt_dry_run,
-    "verbose"  => \$opt_verbose,
+    "prefix=s"       => \$opt_prefix,
+    "repo=s"         => \$opt_repo,
+    "os=s"           => \$opt_os,
+    "arch=s"         => \$opt_arch,
+    "build=s"        => \$opt_build,
+    "dry-run"        => \$opt_dry_run,
+    "keep-downloads" => \$opt_keep_downloads,
+    "verbose"        => \$opt_verbose,
 ) or die("Error in command line arguments\n");
 
 die "--prefix is required\n" unless $opt_prefix;
@@ -36,9 +38,9 @@ die "Usage: [options] <stewfile>\n" unless $file && -f $file;
 
 my $build_dir      = abs_path($opt_build);
 my $cache_dir      = "$build_dir/.cache";
-my $stew_cache_dir  = "$cache_dir/stew";
+my $stew_cache_dir = "$cache_dir/stew";
 my $dist_cache_dir = "$cache_dir/dist";
-rmtree($cache_dir);
+rmtree($cache_dir) unless $opt_keep_downloads;
 mkpath($cache_dir);
 mkpath($stew_cache_dir);
 mkpath($dist_cache_dir);
@@ -67,18 +69,16 @@ _log("Done");
 sub _get_stew {
     my ($stew_file) = @_;
 
-    return if -e "$stew_cache_dir/$stew_file";
+    if (!-e "$stew_cache_dir/$stew_file") {
+        _log("Getting stew '$stew_file' from repository...");
 
-    _log("Getting stew '$stew_file' from repository...");
+        _get_file_from_repo("$opt_repo/stew/$stew_file",
+            "$stew_cache_dir/$stew_file");
+        die "Cannot get stew '$stew_file' from repository\n"
+          unless -e "$stew_cache_dir/$stew_file";
+    }
 
-    _get_file_from_repo("$opt_repo/stew/$stew_file", "$stew_cache_dir/$stew_file");
-    die "Cannot get stew '$stew_file' from repository\n"
-      unless -e "$stew_cache_dir/$stew_file";
-
-    my $content = _slurp("$stew_cache_dir/$stew_file");
-
-    my $stew_class = _sandbox($file, $content);
-    my $stew = $stew_class->new;
+    my $stew = _parse_stew($stew_file);
 
     my @stews;
     push @stews, $stew;
@@ -89,6 +89,15 @@ sub _get_stew {
     }
 
     return @stews;
+}
+
+sub _parse_stew {
+    my ($stew_file) = @_;
+
+    my $content = _slurp("$stew_cache_dir/$stew_file");
+
+    my $stew_class = _sandbox($file, $content);
+    return $stew_class->new;
 }
 
 sub _build_stew {
