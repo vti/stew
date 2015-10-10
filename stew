@@ -1,0 +1,236 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Cwd qw(abs_path);
+use File::Path qw(mkpath rmtree);
+use Getopt::Long;
+
+my $opt_prefix;
+my $opt_repo;
+my $opt_os;
+my $opt_arch;
+my $opt_build;
+my $opt_verbose;
+GetOptions(
+    "prefix=s" => \$opt_prefix,
+    "repo=s"   => \$opt_repo,
+    "os=s"     => \$opt_os,
+    "arch=s"   => \$opt_arch,
+    "build=s"  => \$opt_build,
+    "verbose"  => \$opt_verbose,
+) or die("Error in command line arguments\n");
+
+die "--prefix is required\n" unless $opt_prefix;
+die "--repo is required\n"   unless $opt_repo;
+die "--build is required\n"  unless $opt_build;
+die "--os is required\n"     unless $opt_os;
+die "--arch is required\n"   unless $opt_arch;
+
+my ($file) = @ARGV;
+die "Usage: [options] <pkgfile>\n" unless $file && -f $file;
+
+my $build_dir      = abs_path($opt_build);
+my $cache_dir      = "$build_dir/.cache";
+my $pkg_cache_dir  = "$cache_dir/pkg";
+my $dist_cache_dir = "$cache_dir/dist";
+rmtree($cache_dir);
+mkpath($cache_dir);
+mkpath($pkg_cache_dir);
+mkpath($dist_cache_dir);
+mkpath($opt_prefix);
+
+_log("Parsing '$file'");
+
+my @pkg_files = map { "$_.pkg" } grep { !/^#/ && length } split /\r?\n/,
+  _slurp($file);
+
+_log(sprintf 'Found %d packages', scalar @pkg_files);
+
+foreach my $pkg_file (@pkg_files) {
+    _log("Getting pkg '$pkg_file' from repository...");
+
+    _get_file_from_repo("$opt_repo/pkg/$pkg_file", $pkg_cache_dir);
+    die "Cannot get pkg '$pkg_file.pkg' from repository\n"
+      unless -e "$pkg_cache_dir/$pkg_file";
+}
+
+foreach my $pkg_file (@pkg_files) {
+    _build_pkg("$pkg_cache_dir/$pkg_file");
+}
+
+_log("Done");
+
+sub _build_pkg {
+    my ($file) = @_;
+
+    my $content = _slurp($file);
+
+    my $pkg_class = _sandbox($file, $content);
+    my $pkg = $pkg_class->new;
+
+    my $pkg_dist  = join '-', $pkg->name, $pkg->version;
+    my $pkg_name  = $pkg->name;
+    my $pkg_file  = $pkg->file;
+    my $pkg_build = $pkg_dist . '-dist.tar.gz';
+
+    _log("Building and installing '$pkg_dist'...");
+
+    _log("Checking if repo has cached file...");
+    if (!-e "$dist_cache_dir/$pkg_build") {
+        _get_file_from_repo("$opt_repo/cache/$opt_os/$opt_arch/$pkg_build",
+            $dist_cache_dir);
+    }
+
+    if (-e "$dist_cache_dir/$pkg_build") {
+        _log("Using cached file");
+
+        _system("tar xzf '$dist_cache_dir/$pkg_build' -C $opt_prefix");
+    }
+    else {
+        my $work_dir = "$build_dir/" . $pkg->name;
+        mkpath($work_dir);
+
+        _get_file_from_repo("$opt_repo/src/$pkg_file", $work_dir);
+        die "file '$pkg_file' not found in repository\n"
+          unless -e "$work_dir/$pkg_file";
+
+        local $ENV{PREFIX} = $opt_prefix;
+
+        chdir $work_dir;
+        _prepare($pkg);
+
+        chdir $work_dir;
+        _build($pkg);
+
+        _system("mv $opt_prefix $opt_prefix.prev") if -d $opt_prefix;
+
+        chdir $work_dir;
+        _install($pkg);
+
+        _postinstall($pkg);
+
+        if (!-e "$dist_cache_dir/$pkg_build") {
+            _log("    > CACHING");
+
+            _system("cd $opt_prefix && tar czf $pkg_build *");
+            _system("cd $opt_prefix && mv $pkg_build $dist_cache_dir/");
+
+            mkpath("$dist_cache_dir/new/$opt_os/$opt_arch/");
+            _system(
+"ln -s $dist_cache_dir/$pkg_build $dist_cache_dir/new/$opt_os/$opt_arch/"
+            );
+        }
+
+        if (-d "$opt_prefix.prev") {
+            _system("cp -R $opt_prefix/* $opt_prefix.prev/");
+            _system("rm -rf $opt_prefix");
+
+            _system("mv $opt_prefix.prev $opt_prefix");
+        }
+    }
+
+    _log("Done building '$pkg_dist'");
+}
+
+sub _get_file_from_repo {
+    my ($in, $out) = @_;
+
+    if (-e $in) {
+        system("cp $in $out");
+    }
+}
+
+sub _prepare {
+    my ($pkg) = @_;
+
+    _log("    > PREPARE");
+
+    my @commands = $pkg->prepare;
+    _system(join ' && ', @commands);
+}
+
+sub _build {
+    my ($pkg) = @_;
+
+    _log("    > BUILD");
+
+    my @commands = $pkg->build;
+    _system(join ' && ', @commands);
+}
+
+sub _install {
+    my ($pkg) = @_;
+
+    _log("    > INSTALL");
+
+    my @commands = $pkg->install;
+    _system(join ' && ', @commands);
+}
+
+sub _postinstall {
+    my ($pkg) = @_;
+
+    _log("    > POST-INSTALL");
+
+    my @commands = $pkg->postinstall;
+    _system(join ' && ', @commands);
+}
+
+sub _log {
+    print STDERR @_, "\n";
+}
+
+sub _system {
+    _log(@_) if $opt_verbose;
+
+    my $redirect = $opt_verbose ? '' : '> /dev/null';
+    system("sh -c \"$_[0]\" 2>&1 | tee -a $build_dir/pkg.log $redirect");
+}
+
+sub _slurp {
+    my ($file) = @_;
+
+    local $/;
+    open my $fh, '<', $file or die $!;
+    return <$fh>;
+}
+
+sub _rand_str {
+    my @alpha = ('0' .. '9', 'a' .. 'z', 'A' .. 'Z');
+    my $str = '';
+
+    $str .= $alpha[rand($#alpha)] for 1 .. 16;
+
+    return $str;
+}
+
+sub _sandbox {
+    my ($file, $content, $work_dir) = @_;
+
+    my $class_name = 'pkg::_build_' . _rand_str();
+
+    my $package = <<"EOP";
+    package $class_name;
+    use strict;
+    use warnings;
+    sub new {
+        my \$class = shift;
+
+        my \$self = {};
+        bless \$self, \$class;
+
+        return \$self;
+    }
+    $content
+    sub name    { \$name }
+    sub version { \$version }
+    sub file    { \$file }
+    1;
+EOP
+
+    eval $package or die "Error compiling '$file': $@\n";
+
+    return $class_name;
+}
