@@ -53,27 +53,46 @@ my @stew_files = map { "$_.stew" } grep { !/^#/ && length } split /\r?\n/,
 
 _log(sprintf 'Found %d packages', scalar @stew_files);
 
+my @stew_pkgs;
 foreach my $stew_file (@stew_files) {
-    _log("Getting stew '$stew_file' from repository...");
-
-    _get_file_from_repo("$opt_repo/stew/$stew_file", "$stew_cache_dir/$stew_file");
-    die "Cannot get stew '$stew_file.stew' from repository\n"
-      unless -e "$stew_cache_dir/$stew_file";
+    push @stew_pkgs, _get_stew($stew_file);
 }
 
-foreach my $stew_file (@stew_files) {
-    _build_stew("$stew_cache_dir/$stew_file");
+foreach my $stew_pkg (@stew_pkgs) {
+    _build_stew($stew_pkg);
 }
 
 _log("Done");
 
-sub _build_stew {
-    my ($file) = @_;
+sub _get_stew {
+    my ($stew_file) = @_;
 
-    my $content = _slurp($file);
+    return if -e "$stew_cache_dir/$stew_file";
+
+    _log("Getting stew '$stew_file' from repository...");
+
+    _get_file_from_repo("$opt_repo/stew/$stew_file", "$stew_cache_dir/$stew_file");
+    die "Cannot get stew '$stew_file' from repository\n"
+      unless -e "$stew_cache_dir/$stew_file";
+
+    my $content = _slurp("$stew_cache_dir/$stew_file");
 
     my $stew_class = _sandbox($file, $content);
     my $stew = $stew_class->new;
+
+    my @stews;
+    push @stews, $stew;
+
+    my @depends = $stew->depends;
+    foreach my $depends (@depends) {
+        unshift @stews, _get_stew("$depends.stew");
+    }
+
+    return @stews;
+}
+
+sub _build_stew {
+    my ($stew) = @_;
 
     my $stew_dist  = join '-', $stew->name, $stew->version;
     my $stew_name  = $stew->name;
@@ -96,6 +115,8 @@ sub _build_stew {
     else {
         my $work_dir = "$build_dir/" . $stew->name;
         mkpath($work_dir);
+
+        _symlink_depends($stew, $work_dir);
 
         _get_file_from_repo("$opt_repo/src/$stew_file", "$work_dir/$stew_file");
         die "file '$stew_file' not found in repository\n"
@@ -137,6 +158,33 @@ sub _build_stew {
     }
 
     _log("Done building '$stew_dist'");
+}
+
+sub _symlink_depends {
+    my ($stew, $work_dir) = @_;
+
+    my @depends = $stew->depends;
+    foreach my $depend (@depends) {
+        _symlink_depend($depend, $work_dir);
+    }
+}
+
+sub _symlink_depend {
+    my ($depend, $work_dir) = @_;
+
+    my ($stew) = grep { $_->name . '-' . $_->version eq $depend } @stew_pkgs;
+
+    if ($stew) {
+        _system(sprintf "ln -s $build_dir/%s/%s $work_dir",
+            $stew->name, $stew->name . '-' . $stew->version);
+
+        if ($stew->depends) {
+            _symlink_depends($stew);
+        }
+    }
+    else {
+        die "Cannot find dependency '$depend'\n";
+    }
 }
 
 sub _get_file_from_repo {
@@ -244,6 +292,7 @@ sub _sandbox {
     sub name    { \$name }
     sub version { \$version }
     sub file    { \$file }
+    sub depends { \@depends }
     1;
 EOP
 
