@@ -44,6 +44,8 @@ mkpath($stew_cache_dir);
 mkpath($dist_cache_dir);
 mkpath($opt_prefix);
 
+my $log_file = "$build_dir/stew.log";
+
 _log("Parsing '$file'");
 
 my @stew_files = map { "$_.stew" } grep { !/^#/ && length } split /\r?\n/,
@@ -117,8 +119,8 @@ sub _build_stew {
         if (!-e "$dist_cache_dir/$stew_build") {
             _log("    > CACHING");
 
-            _system("cd $opt_prefix && tar czf $stew_build *");
-            _system("cd $opt_prefix && mv $stew_build $dist_cache_dir/");
+            _system("cd $opt_prefix", "tar czf $stew_build *");
+            _system("cd $opt_prefix", "mv $stew_build $dist_cache_dir/");
 
             mkpath("$dist_cache_dir/new/$opt_os/$opt_arch/");
             _system(
@@ -156,7 +158,7 @@ sub _prepare {
     _log("    > PREPARE");
 
     my @commands = $stew->prepare;
-    _system(join ' && ', @commands);
+    _system(@commands);
 }
 
 sub _build {
@@ -165,7 +167,7 @@ sub _build {
     _log("    > BUILD");
 
     my @commands = $stew->build;
-    _system(join ' && ', @commands);
+    _system(@commands);
 }
 
 sub _install {
@@ -174,7 +176,7 @@ sub _install {
     _log("    > INSTALL");
 
     my @commands = $stew->install;
-    _system(join ' && ', @commands);
+    _system(@commands);
 }
 
 sub _postinstall {
@@ -183,18 +185,24 @@ sub _postinstall {
     _log("    > POST-INSTALL");
 
     my @commands = $stew->postinstall;
-    _system(join ' && ', @commands);
+    _system(@commands);
 }
 
 sub _log {
     print STDERR @_, "\n";
+
+    open my $fh, '>>', $log_file;
+    print $fh @_, "\n";
+    close $fh;
 }
 
 sub _system {
-    my $redirect = $opt_verbose ? '' : '> /dev/null';
-    my $cmd = "sh -c \"$_[0]\" 2>&1 | tee -a $build_dir/stew.log $redirect";
+    my $cmd = join ' && ', @_;
 
-    _log($cmd) if $opt_verbose;
+    my $redirect = $opt_verbose ? '' : '> /dev/null';
+    $cmd = "sh -c \"$cmd\" 2>&1 | tee -a $log_file $redirect";
+
+    _log($cmd);
     system($cmd) unless $opt_dry_run;
 }
 
