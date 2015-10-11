@@ -8,6 +8,11 @@ use File::Path qw(mkpath rmtree);
 use Getopt::Long;
 use HTTP::Tiny;
 
+if (-e '.stewrc') {
+    my $rc = _slurp('.stewrc');
+    unshift @ARGV, split /\r?\n/, $rc;
+}
+
 my $opt_prefix;
 my $opt_repo;
 my $opt_os;
