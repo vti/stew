@@ -48,12 +48,12 @@ mkpath($opt_prefix);
 
 my $log_file = "$build_dir/stew.log";
 
-_log("Parsing '$file'");
+_logn("Parsing '$file'");
 
 my @stew_files = map { "$_.stew" } grep { !/^#/ && length } split /\r?\n/,
   _slurp($file);
 
-_log(sprintf 'Found %d packages', scalar @stew_files);
+_logn(sprintf 'Found %d packages', scalar @stew_files);
 
 my @stew_pkgs;
 foreach my $stew_file (@stew_files) {
@@ -64,17 +64,17 @@ foreach my $stew_pkg (@stew_pkgs) {
     _build_stew($stew_pkg);
 }
 
-_log("Done");
+_logn("Done");
 
 sub _get_stew {
     my ($stew_file) = @_;
 
     if (!-e "$stew_cache_dir/$stew_file") {
-        _log("Getting stew '$stew_file' from repository...");
+        _logn("Getting stew '$stew_file' from repository...");
 
         _get_file_from_repo("$opt_repo/stew/$stew_file",
             "$stew_cache_dir/$stew_file");
-        die "Cannot get stew '$stew_file' from repository\n"
+        die "ERROR: Cannot get stew '$stew_file' from repository\n"
           unless -e "$stew_cache_dir/$stew_file";
     }
 
@@ -94,9 +94,11 @@ sub _get_stew {
 sub _parse_stew {
     my ($stew_file) = @_;
 
+    _logn("Parsing '$stew_file'");
+
     my $content = _slurp("$stew_cache_dir/$stew_file");
 
-    my $stew_class = _sandbox($file, $content);
+    my $stew_class = _sandbox($stew_file, $content);
     return $stew_class->new;
 }
 
@@ -108,16 +110,18 @@ sub _build_stew {
     my $stew_file  = $stew->file;
     my $stew_build = $stew_dist . '-dist.tar.gz';
 
-    _log("Building and installing '$stew_dist'...");
+    _logn("Building and installing '$stew_dist'...");
 
     _log("Checking if repo has cached file...");
     if (!-e "$dist_cache_dir/$stew_build") {
+        _logn("no");
+
         _get_file_from_repo("$opt_repo/cache/$opt_os/$opt_arch/$stew_build",
             "$dist_cache_dir/$stew_build");
     }
 
     if (-e "$dist_cache_dir/$stew_build") {
-        _log("Using cached file");
+        _logn("yes. Using it");
 
         _system("tar xzf '$dist_cache_dir/$stew_build' -C $opt_prefix");
     }
@@ -127,8 +131,17 @@ sub _build_stew {
 
         _symlink_depends($stew, $work_dir);
 
-        _get_file_from_repo("$opt_repo/src/$stew_file", "$work_dir/$stew_file");
-        die "file '$stew_file' not found in repository\n"
+        chdir $work_dir;
+        _logn('    > DOWNLOAD');
+        if (my $download_cb = $stew->phase('download')) {
+            my @commands = $download_cb->();
+            _system(@commands);
+        }
+        else {
+            _get_file_from_repo("$opt_repo/src/$stew_file",
+                "$work_dir/$stew_file");
+        }
+        die "Getting file '$stew_file' failed\n"
           unless -e "$work_dir/$stew_file";
 
         local $ENV{PREFIX} = $opt_prefix;
@@ -144,10 +157,11 @@ sub _build_stew {
         chdir $work_dir;
         _install($stew);
 
+        chdir $work_dir;
         _postinstall($stew);
 
         if (!-e "$dist_cache_dir/$stew_build") {
-            _log("    > CACHING");
+            _logn("    > CACHING");
 
             _system("cd $opt_prefix", "tar czf $stew_build *");
             _system("cd $opt_prefix", "mv $stew_build $dist_cache_dir/");
@@ -166,7 +180,7 @@ sub _build_stew {
         }
     }
 
-    _log("Done building '$stew_dist'");
+    _logn("Done building '$stew_dist'");
 }
 
 sub _symlink_depends {
@@ -199,6 +213,8 @@ sub _symlink_depend {
 sub _get_file_from_repo {
     my ($in, $out) = @_;
 
+    _logn("Getting '$in'...");
+
     if ($in =~ m/^http/) {
         HTTP::Tiny->new->mirror($in, $out);
     }
@@ -212,55 +228,64 @@ sub _get_file_from_repo {
 sub _prepare {
     my ($stew) = @_;
 
-    _log("    > PREPARE");
+    _logn("    > PREPARE");
 
-    my @commands = $stew->prepare;
+    my @commands = $stew->run('prepare');
     _system(@commands);
 }
 
 sub _build {
     my ($stew) = @_;
 
-    _log("    > BUILD");
+    _logn("    > BUILD");
 
-    my @commands = $stew->build;
+    my @commands = $stew->run('build');
     _system(@commands);
 }
 
 sub _install {
     my ($stew) = @_;
 
-    _log("    > INSTALL");
+    _logn("    > INSTALL");
 
-    my @commands = $stew->install;
+    my @commands = $stew->run('install');
     _system(@commands);
 }
 
 sub _postinstall {
     my ($stew) = @_;
 
-    _log("    > POST-INSTALL");
+    _logn("    > POST-INSTALL");
 
-    my @commands = $stew->postinstall;
+    my @commands = $stew->run('postinstall');
     _system(@commands);
 }
 
+sub _logn { _log(@_, "\n") }
+
 sub _log {
-    print STDERR @_, "\n";
+    print STDERR @_;
 
     open my $fh, '>>', $log_file;
-    print $fh @_, "\n";
+    print $fh @_;
     close $fh;
 }
 
 sub _system {
+    return unless @_;
+
     my $cmd = join ' && ', @_;
 
     my $redirect = $opt_verbose ? '' : '> /dev/null';
     $cmd = "sh -c \"$cmd\" 2>&1 | tee -a $log_file $redirect";
 
-    _log($cmd);
-    system($cmd) unless $opt_dry_run;
+    _logn($cmd);
+
+    unless ($opt_dry_run) {
+        system($cmd);
+
+        die "Error" if $?;
+    }
 }
 
 sub _slurp {
@@ -289,6 +314,12 @@ sub _sandbox {
     package $class_name;
     use strict;
     use warnings;
+    my \$name;
+    my \$version;
+    my \$package;
+    my \$file;
+    my \@depends;
+
     sub new {
         my \$class = shift;
 
@@ -297,11 +328,33 @@ sub _sandbox {
 
         return \$self;
     }
-    $content
+
     sub name    { \$name }
     sub version { \$version }
+    sub package { \$package }
     sub file    { \$file }
     sub depends { \@depends }
+
+    my \$phases = {};
+    sub download(&)    { \$phases->{download}    = shift }
+    sub prepare(&)     { \$phases->{prepare}     = shift }
+    sub build(&)       { \$phases->{build}       = shift }
+    sub install(&)     { \$phases->{install}     = shift }
+    sub postinstall(&) { \$phases->{postinstall} = shift }
+
+    sub phase { \$phases->{\$_[1]} }
+
+    sub run {
+        my \$self = shift;
+        my (\$phase) = \@_;
+
+        if (\$phases->{\$phase}) {
+            return \$phases->{\$phase}->()
+        }
+
+        return;
+    }
+    $content
     1;
 EOP
 
