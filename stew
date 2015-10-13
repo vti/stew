@@ -173,6 +173,15 @@ sub _build_stew {
         local $ENV{STEW_ARCH} = $opt_arch;
         local $ENV{PREFIX}    = $opt_prefix;
 
+        local $ENV{PATH}            = "$ENV{PREFIX}/bin:$ENV{PATH}";
+        local $ENV{LIBPATH}         = "$ENV{PREFIX}/lib:$ENV{LIBPATH}";
+        local $ENV{LIBRARY_PATH}    = "$ENV{PREFIX}/lib:$ENV{LIBRARY_PATH}";
+        local $ENV{LD_LIBRARY_PATH} = "$ENV{PREFIX}/lib:$ENV{LD_LIBRARY_PATH}";
+
+        local $ENV{CPATH}              = "$ENV{PREFIX}/include:$ENV{CPATH}";
+        local $ENV{C_INCLUDE_PATH}     = "$ENV{PREFIX}/include:$ENV{C_INCLUDE_PATH}";
+        local $ENV{CPLUS_INCLUDE_PATH} = "$ENV{PREFIX}/include:$ENV{CPLUS_INCLUDE_PATH}";
+
         chdir $work_dir;
         _prepare($stew);
 
