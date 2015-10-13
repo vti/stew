@@ -8,9 +8,9 @@ use File::Path qw(mkpath rmtree);
 use Getopt::Long;
 use HTTP::Tiny;
 
-if (-e '.stewrc') {
+if ( -e '.stewrc' ) {
     my $rc = _slurp('.stewrc');
-    unshift @ARGV, split /\r?\n/, $rc;
+    unshift @ARGV, grep { !/^#/ } split /\r?\n/, $rc;
 }
 
 my $opt_prefix;
@@ -72,7 +72,7 @@ foreach my $stew_pkg (@stew_pkgs) {
 _logn("Done");
 
 sub _get_stew {
-    my ($stew_file) = @_;
+    my ($stew_file, $type) = @_;
 
     if (!-e "$stew_cache_dir/$stew_file") {
         _logn("Getting stew '$stew_file' from repository...");
@@ -83,27 +83,32 @@ sub _get_stew {
           unless -e "$stew_cache_dir/$stew_file";
     }
 
-    my $stew = _parse_stew($stew_file);
+    my $stew = _parse_stew($stew_file, $type);
 
     my @stews;
     push @stews, $stew;
 
     my @depends = $stew->depends;
     foreach my $depends (@depends) {
-        unshift @stews, _get_stew("$depends.stew");
+        unshift @stews, _get_stew("$depends.stew", 'depends');
+    }
+
+    my @makedepends = $stew->makedepends;
+    foreach my $makedepends (@makedepends) {
+        unshift @stews, _get_stew("$makedepends.stew", 'makedepends');
     }
 
     return @stews;
 }
 
 sub _parse_stew {
-    my ($stew_file) = @_;
+    my ($stew_file, $type) = @_;
 
     _logn("Parsing '$stew_file'");
 
     my $content = _slurp("$stew_cache_dir/$stew_file");
 
-    my $stew_class = _sandbox($stew_file, $content);
+    my $stew_class = _sandbox($stew_file, $content, $type);
     return $stew_class->new;
 }
 
@@ -114,6 +119,11 @@ sub _build_stew {
     my $stew_name  = $stew->name;
     my $stew_file  = $stew->file;
     my $stew_build = $stew_dist . '-dist.tar.gz';
+
+    if ($stew->is_makedependency) {
+        _logn("This is a make dependency '$stew_dist'. Build canceled");
+        return;
+    }
 
     _logn("Building and installing '$stew_dist'...");
 
@@ -134,11 +144,12 @@ sub _build_stew {
         my $work_dir = "$build_dir/" . $stew->name;
         mkpath($work_dir);
 
+        _logn('Symlinking dependencies...');
         _symlink_depends($stew, $work_dir);
 
-        chdir $work_dir;
         _logn('    > DOWNLOAD');
         if (my $download_cb = $stew->phase('download')) {
+            chdir $work_dir;
             my @commands = $download_cb->();
             _system(@commands);
         }
@@ -194,6 +205,11 @@ sub _symlink_depends {
     my @depends = $stew->depends;
     foreach my $depend (@depends) {
         _symlink_depend($depend, $work_dir);
+    }
+
+    my @makedepends = $stew->makedepends;
+    foreach my $makedepend (@makedepends) {
+        _symlink_depend($makedepend, $work_dir);
     }
 }
 
@@ -311,7 +327,9 @@ sub _rand_str {
 }
 
 sub _sandbox {
-    my ($file, $content, $work_dir) = @_;
+    my ($file, $content, $type) = @_;
+
+    $type = '' unless defined $type;
 
     my $class_name = 'stew::_build_' . _rand_str();
 
@@ -324,6 +342,7 @@ sub _sandbox {
     my \$package;
     my \$file;
     my \@depends;
+    my \@makedepends;
 
     sub new {
         my \$class = shift;
@@ -334,11 +353,15 @@ sub _sandbox {
         return \$self;
     }
 
-    sub name    { \$name }
-    sub version { \$version }
-    sub package { \$package }
-    sub file    { \$file }
-    sub depends { \@depends }
+    sub is_dependency     { '$type' eq 'depends' }
+    sub is_makedependency { '$type' eq 'makedepends' }
+
+    sub name        { \$name }
+    sub version     { \$version }
+    sub package     { \$package }
+    sub file        { \$file }
+    sub depends     { \@depends }
+    sub makedepends { \@makedepends }
 
     my \$phases = {};
     sub download(&)    { \$phases->{download}    = shift }
