@@ -36,6 +36,11 @@ GetOptions(
     "verbose"        => \$opt_verbose,
 ) or _error("Error in command line arguments");
 
+$opt_os //= `uname -s`;
+$opt_os = lc chomp $opt_os;
+$opt_arch //= `uname -m`;
+$opt_arch = lc chomp $opt_arch;
+
 _error("--prefix is required") unless $opt_prefix;
 _error("--repo is required")   unless $opt_repo;
 _error("--build is required")  unless $opt_build;
