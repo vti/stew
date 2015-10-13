@@ -4,7 +4,9 @@ use strict;
 use warnings;
 
 use Cwd qw(cwd abs_path);
+use Data::Dumper ();
 use File::Path qw(mkpath rmtree);
+use File::Spec;
 use Getopt::Long;
 use HTTP::Tiny;
 
@@ -62,15 +64,27 @@ my @stew_files = map { "$_.stew" } grep { !/^#/ && length } split /\r?\n/,
   _slurp($opt_stewfile);
 _logn(sprintf 'Found %d packages in stewfile', scalar @stew_files);
 
+my $install_file = File::Spec->catfile($opt_prefix, '.stew');
+my $installed = _read_installed();
+
 my @stew_pkgs;
-foreach my $stew_file (@stew_files) {
-    if (@packages && !grep { $stew_file =~ m/^$_/ } @packages) {
-        _logn("Skipping $stew_file");
+foreach my $package (@packages) {
+    if (_is_installed($package)) {
+        _logn("$package already installed");
         next;
     }
 
-    push @stew_pkgs, _get_stew($stew_file);
+    push @stew_pkgs, _get_stew("$package.stew");
 }
+
+#foreach my $stew_file (@stew_files) {
+    #if (@packages && !grep { $stew_file =~ m/^$_/ } @packages) {
+        #_logn("Skipping $stew_file");
+        #next;
+    #}
+
+    #push @stew_pkgs, _get_stew($stew_file);
+#}
 
 unless (@stew_pkgs) {
     _error("No packages were found");
@@ -202,6 +216,11 @@ sub _build_stew {
             return;
         }
 
+        if (_is_installed($stew->package)) {
+            _logn("Already installed");
+            return;
+        }
+
         chdir $work_dir;
         _build($stew);
 
@@ -230,9 +249,38 @@ sub _build_stew {
 
             _system("mv $opt_prefix.prev $opt_prefix");
         }
+
+        $installed->{$stew->package} = {version => $stew->version};
+        _write_installed($installed);
     }
 
     _logn("Done building '$stew_dist'");
+}
+
+sub _is_installed {
+    my ($package) = @_;
+
+    if ($installed->{$package}) {
+        return 1;
+    }
+
+    return 0;
+}
+
+sub _read_installed {
+    my $installed = {};
+    if (-e $install_file) {
+        no strict;
+        $installed = eval _slurp($install_file);
+    }
+
+    return $installed;
+}
+
+sub _write_installed {
+    my ($installed) = @_;
+
+    _write($install_file, Data::Dumper::Dumper($installed));
 }
 
 sub _symlink_depends {
@@ -356,6 +404,14 @@ sub _slurp {
     local $/;
     open my $fh, '<', $file or _error("Can't read file '$file': $!");
     return <$fh>;
+}
+
+sub _write {
+    my ($file, $content) = @_;
+
+    open my $fh, '>', $file or _error("Can't write file '$file': $!");
+    print $fh $content;
+    close $fh;
 }
 
 sub _rand_str {
