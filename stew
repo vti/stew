@@ -76,11 +76,36 @@ unless (@stew_pkgs) {
     _error("No packages were found");
 }
 
+$ENV{STEW_OS}   = $opt_os;
+$ENV{STEW_ARCH} = $opt_arch;
+$ENV{PREFIX}    = $opt_prefix;
+
+_unshift_env(PATH               => "$ENV{PREFIX}/bin");
+
+_unshift_env(LIBPATH            => "$ENV{PREFIX}/lib");
+_unshift_env(LIBRARY_PATH       => "$ENV{PREFIX}/lib");
+_unshift_env(LD_LIBRARY_PATH    => "$ENV{PREFIX}/lib");
+
+_unshift_env(CPATH              => "$ENV{PREFIX}/include");
+_unshift_env(C_INCLUDE_PATH     => "$ENV{PREFIX}/include");
+_unshift_env(CPLUS_INCLUDE_PATH => "$ENV{PREFIX}/include");
+
 foreach my $stew_pkg (@stew_pkgs) {
     _build_stew($stew_pkg);
 }
 
 _logn("Done");
+
+sub _unshift_env {
+    my ($var, $value) = @_;
+
+    if ($ENV{$var}) {
+        $ENV{$var} = "$value:$ENV{$var}";
+    }
+    else {
+        $ENV{$var} = $value;
+    }
+}
 
 sub _get_stew {
     my ($stew_file, $type) = @_;
@@ -168,19 +193,6 @@ sub _build_stew {
         }
         _error("Getting file '$stew_file' failed")
           unless -e "$work_dir/$stew_file";
-
-        local $ENV{STEW_OS}   = $opt_os;
-        local $ENV{STEW_ARCH} = $opt_arch;
-        local $ENV{PREFIX}    = $opt_prefix;
-
-        local $ENV{PATH}            = "$ENV{PREFIX}/bin:$ENV{PATH}";
-        local $ENV{LIBPATH}         = "$ENV{PREFIX}/lib:$ENV{LIBPATH}";
-        local $ENV{LIBRARY_PATH}    = "$ENV{PREFIX}/lib:$ENV{LIBRARY_PATH}";
-        local $ENV{LD_LIBRARY_PATH} = "$ENV{PREFIX}/lib:$ENV{LD_LIBRARY_PATH}";
-
-        local $ENV{CPATH}              = "$ENV{PREFIX}/include:$ENV{CPATH}";
-        local $ENV{C_INCLUDE_PATH}     = "$ENV{PREFIX}/include:$ENV{C_INCLUDE_PATH}";
-        local $ENV{CPLUS_INCLUDE_PATH} = "$ENV{PREFIX}/include:$ENV{CPLUS_INCLUDE_PATH}";
 
         chdir $work_dir;
         _prepare($stew);
