@@ -302,15 +302,15 @@ sub _system {
 
     my $cmd = join ' && ', @_;
 
-    my $redirect = $opt_verbose ? '' : '> /dev/null';
-    $cmd = "sh -c \"$cmd\" 2>&1 | tee -a $log_file $redirect";
+    my $redirect = $opt_verbose ? '' : ' > /dev/null';
+    $cmd = "sh -c \"$cmd\" 2>&1 >> $log_file$redirect";
 
     _logn($cmd);
 
     unless ($opt_dry_run) {
-        system($cmd);
+        my $exit = system($cmd);
 
-        die "Error" if $?;
+        die "Error" if $exit;
     }
 }
 
