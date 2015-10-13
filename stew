@@ -158,7 +158,9 @@ sub _build_stew {
         die "Getting file '$stew_file' failed\n"
           unless -e "$work_dir/$stew_file";
 
-        local $ENV{PREFIX} = $opt_prefix;
+        local $ENV{STEW_OS}   = $opt_os;
+        local $ENV{STEW_ARCH} = $opt_arch;
+        local $ENV{PREFIX}    = $opt_prefix;
 
         chdir $work_dir;
         _prepare($stew);
