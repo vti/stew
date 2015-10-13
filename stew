@@ -8,7 +8,7 @@ use File::Path qw(mkpath rmtree);
 use Getopt::Long;
 use HTTP::Tiny;
 
-if ( -e '.stewrc' ) {
+if (-e '.stewrc') {
     my $rc = _slurp('.stewrc');
     unshift @ARGV, grep { !/^#/ } split /\r?\n/, $rc;
 }
@@ -18,6 +18,7 @@ my $opt_repo;
 my $opt_os;
 my $opt_arch;
 my $opt_build;
+my $opt_stewfile = 'stewfile';
 my $opt_dry_run;
 my $opt_keep_downloads;
 my $opt_verbose;
@@ -27,19 +28,21 @@ GetOptions(
     "os=s"           => \$opt_os,
     "arch=s"         => \$opt_arch,
     "build=s"        => \$opt_build,
+    "stewfile=s"     => \$opt_stewfile,
     "dry-run"        => \$opt_dry_run,
     "keep-downloads" => \$opt_keep_downloads,
     "verbose"        => \$opt_verbose,
-) or die("Error in command line arguments\n");
+) or _error("Error in command line arguments");
 
-die "--prefix is required\n" unless $opt_prefix;
-die "--repo is required\n"   unless $opt_repo;
-die "--build is required\n"  unless $opt_build;
-die "--os is required\n"     unless $opt_os;
-die "--arch is required\n"   unless $opt_arch;
+_error("--prefix is required") unless $opt_prefix;
+_error("--repo is required")   unless $opt_repo;
+_error("--build is required")  unless $opt_build;
+_error("--os is required")     unless $opt_os;
+_error("--arch is required")   unless $opt_arch;
+_error("stewfile not found, use --stewfile to specify the path")
+  unless $opt_stewfile && -f $opt_stewfile;
 
-my ($file) = @ARGV ? @ARGV : 'stewfile';
-die "Usage: [options] <stewfile>\n" unless $file && -f $file;
+my (@packages) = @ARGV;
 
 my $root_dir       = abs_path(cwd());
 my $build_dir      = abs_path($opt_build);
@@ -54,16 +57,23 @@ mkpath($opt_prefix);
 
 my $log_file = "$build_dir/stew.log";
 
-_logn("Parsing '$file'");
-
+_logn("Parsing '$opt_stewfile'");
 my @stew_files = map { "$_.stew" } grep { !/^#/ && length } split /\r?\n/,
-  _slurp($file);
-
-_logn(sprintf 'Found %d packages', scalar @stew_files);
+  _slurp($opt_stewfile);
+_logn(sprintf 'Found %d packages in stewfile', scalar @stew_files);
 
 my @stew_pkgs;
 foreach my $stew_file (@stew_files) {
+    if (@packages && !grep { $stew_file =~ m/^$_/ } @packages) {
+        _logn("Skipping $stew_file");
+        next;
+    }
+
     push @stew_pkgs, _get_stew($stew_file);
+}
+
+unless (@stew_pkgs) {
+    _error("No packages were found");
 }
 
 foreach my $stew_pkg (@stew_pkgs) {
@@ -80,7 +90,7 @@ sub _get_stew {
 
         _get_file_from_repo("$opt_repo/stew/$stew_file",
             "$stew_cache_dir/$stew_file");
-        die "ERROR: Cannot get stew '$stew_file' from repository\n"
+        _error("Cannot get stew '$stew_file' from repository")
           unless -e "$stew_cache_dir/$stew_file";
     }
 
@@ -155,7 +165,7 @@ sub _build_stew {
             _get_file_from_repo("$opt_repo/src/$stew_file",
                 "$work_dir/$stew_file");
         }
-        die "Getting file '$stew_file' failed\n"
+        _error("Getting file '$stew_file' failed")
           unless -e "$work_dir/$stew_file";
 
         local $ENV{STEW_OS}   = $opt_os;
@@ -232,7 +242,7 @@ sub _symlink_depend {
         }
     }
     else {
-        die "Cannot find dependency '$depend'\n";
+        _error("Cannot find dependency '$depend'");
     }
 }
 
@@ -287,6 +297,11 @@ sub _postinstall {
     _system(@commands);
 }
 
+sub _error {
+    _logn(@_);
+    die "ERROR: " . join(' ', @_), "\n";
+}
+
 sub _logn { _log(@_, "\n") }
 
 sub _log {
@@ -310,7 +325,7 @@ sub _system {
     unless ($opt_dry_run) {
         my $exit = system($cmd);
 
-        die "Error" if $exit;
+        _error("Command failed: $cmd") if $exit;
     }
 }
 
@@ -318,7 +333,7 @@ sub _slurp {
     my ($file) = @_;
 
     local $/;
-    open my $fh, '<', $file or die $!;
+    open my $fh, '<', $file or _error("Can't read file '$file': $!");
     return <$fh>;
 }
 
@@ -391,7 +406,7 @@ sub _sandbox {
     1;
 EOP
 
-    eval $package or die "Error compiling '$file': $@\n";
+    eval $package or _error("Error compiling '$file': $@");
 
     return $class_name;
 }
