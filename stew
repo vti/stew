@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Cwd qw(abs_path);
+use Cwd qw(cwd abs_path);
 use File::Path qw(mkpath rmtree);
 use Getopt::Long;
 use HTTP::Tiny;
@@ -41,6 +41,7 @@ die "--arch is required\n"   unless $opt_arch;
 my ($file) = @ARGV ? @ARGV : 'stewfile';
 die "Usage: [options] <stewfile>\n" unless $file && -f $file;
 
+my $root_dir       = abs_path(cwd());
 my $build_dir      = abs_path($opt_build);
 my $cache_dir      = "$build_dir/.cache";
 my $stew_cache_dir = "$cache_dir/stew";
@@ -115,19 +116,16 @@ sub _parse_stew {
 sub _build_stew {
     my ($stew) = @_;
 
+    chdir $root_dir;
+
     my $stew_dist  = join '-', $stew->name, $stew->version;
     my $stew_name  = $stew->name;
     my $stew_file  = $stew->file;
     my $stew_build = $stew_dist . '-dist.tar.gz';
 
-    if ($stew->is_makedependency) {
-        _logn("This is a make dependency '$stew_dist'. Build canceled");
-        return;
-    }
-
     _logn("Building and installing '$stew_dist'...");
 
-    _log("Checking if repo has cached file...");
+    _log("Checking if repo has cached dist file...");
     if (!-e "$dist_cache_dir/$stew_build") {
         _logn("no");
 
@@ -164,6 +162,11 @@ sub _build_stew {
 
         chdir $work_dir;
         _prepare($stew);
+
+        if ($stew->is_makedependency) {
+            _logn("This is a make dependency '$stew_dist'. Build canceled");
+            return;
+        }
 
         chdir $work_dir;
         _build($stew);
