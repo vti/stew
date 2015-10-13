@@ -150,6 +150,7 @@ sub _build_stew {
     }
     else {
         my $work_dir = "$build_dir/" . $stew->name;
+        rmtree($work_dir);
         mkpath($work_dir);
 
         _logn('Symlinking dependencies...');
@@ -198,13 +199,12 @@ sub _build_stew {
             _system("cd $opt_prefix", "mv $stew_build $dist_cache_dir/");
 
             mkpath("$dist_cache_dir/new/$opt_os/$opt_arch/");
-            _system(
-"ln -s $dist_cache_dir/$stew_build $dist_cache_dir/new/$opt_os/$opt_arch/"
-            );
+            unlink("$dist_cache_dir/new/$opt_os/$opt_arch/$stew_build");
+            _system("ln -s $dist_cache_dir/$stew_build $dist_cache_dir/new/$opt_os/$opt_arch/");
         }
 
         if (-d "$opt_prefix.prev") {
-            _system("cp -R $opt_prefix/* $opt_prefix.prev/");
+            _system("cp --remove-destination -R $opt_prefix/* $opt_prefix.prev/");
             _system("rm -rf $opt_prefix");
 
             _system("mv $opt_prefix.prev $opt_prefix");
