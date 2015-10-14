@@ -1,22 +1,18 @@
 # NAME
 
-App::stew - It's new $module
+App::stew - stew your binaries!
 
 # SYNOPSIS
 
-    use App::stew;
-
 # DESCRIPTION
-
-App::stew is ...
-
-# LICENSE
-
-Copyright (C) vti.
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
 
 # AUTHOR
 
-vti <viacheslav.t@gmail.com>
+Viacheslav Tykhanovskyi, `vti@cpan.org`.
+
+# COPYRIGHT
+
+Copyright (C) 2015, Viacheslav Tykhanovskyi.
+
+This program is free software, you can redistribute it and/or modify it under
+the same terms as Perl 5.10.

@@ -1,7 +1,7 @@
 {
-   "abstract" : "It's new $module",
+   "abstract" : "stew your binaries!",
    "author" : [
-      "vti <viacheslav.t@gmail.com>"
+      "Viacheslav Tykhanovskyi, C<vti@cpan.org>."
    ],
    "dynamic_config" : 0,
    "generated_by" : "Minilla/v2.5.0, CPAN::Meta::Converter version 2.150005",
@@ -52,7 +52,21 @@
       }
    },
    "release_status" : "unstable",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/vti/stew/issues"
+      },
+      "homepage" : "https://github.com/vti/stew",
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/vti/stew.git",
+         "web" : "https://github.com/vti/stew"
+      }
+   },
    "version" : "0.01",
    "x_authority" : "cpan:VTI",
+   "x_contributors" : [
+      "vti <viacheslav.t@gmail.com>"
+   ],
    "x_serialization_backend" : "JSON::PP version 2.27300"
 }
