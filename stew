@@ -5,6 +5,43 @@
 BEGIN {
 my %fatpacked;
 
+$fatpacked{"App/stew.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_STEW';
+  package App::stew;
+  use 5.008001;
+  use strict;
+  use warnings;
+  
+  our $VERSION = "0.01";
+  
+  
+  
+  1;
+  __END__
+  
+  =encoding UTF-8
+  
+  =head1 NAME
+  
+  App::stew - stew your binaries!
+  
+  =head1 SYNOPSIS
+  
+  =head1 DESCRIPTION
+  
+  =head1 AUTHOR
+  
+  Viacheslav Tykhanovskyi, C<vti@cpan.org>.
+  
+  =head1 COPYRIGHT
+  
+  Copyright (C) 2015, Viacheslav Tykhanovskyi.
+  
+  This program is free software, you can redistribute it and/or modify it under
+  the same terms as Perl 5.10.
+  
+  =cut
+APP_STEW
+
 $fatpacked{"App/stew/builder.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_STEW_BUILDER';
   package App::stew::builder;
   
@@ -13,7 +50,7 @@ $fatpacked{"App/stew/builder.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
   
   use File::Copy qw(copy);
   use File::Path qw(mkpath rmtree);
-  use App::stew::util qw(cmd);
+  use App::stew::util qw(cmd info debug);
   
   sub new {
       my $class = shift;
@@ -35,23 +72,22 @@ $fatpacked{"App/stew/builder.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
       my ($stew) = @_;
   
       if ($self->{snapshot}->is_installed($stew)) {
-          warn sprintf "'%s' is up to date\n", $stew->package;
-          #warn sprintf "Already installed '%s'", $stew->package;
+          info sprintf "'%s' is up to date\n", $stew->package;
           return;
       }
   
-      warn sprintf "Building & installing '%s'...\n", $stew->package;
+      info sprintf "Building & installing '%s'...\n", $stew->package;
   
       mkpath($ENV{PREFIX});
   
-      warn sprintf "Resolving dependencies...\n", $stew->package;
+      info sprintf "Resolving dependencies...\n", $stew->package;
   
       $self->_resolve_dependencies($stew);
   
-      warn sprintf "Preparing '%s'...\n", $stew->package;
+      info sprintf "Preparing '%s'...\n", $stew->package;
       $self->_prepare($stew);
   
-      warn sprintf "Building '%s'...\n", $stew->package;
+      info sprintf "Building '%s'...\n", $stew->package;
       $self->_build($stew);
   
       cmd("mv $ENV{PREFIX} $ENV{PREFIX}_");
@@ -59,13 +95,13 @@ $fatpacked{"App/stew/builder.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
       eval {
           mkpath($ENV{PREFIX});
   
-          warn sprintf "Installing '%s'...\n", $stew->package;
+          info sprintf "Installing '%s'...\n", $stew->package;
           $self->_install($stew);
   
           my $dist_name = sprintf '%s-dist.tar.gz', $stew->package;
           cmd("cd $ENV{PREFIX}; tar czf $dist_name *");
   
-          warn sprintf "Caching '%s'...\n", $stew->package;
+          info sprintf "Caching '%s'...\n", $stew->package;
           $self->{cache}->cache_dist("$ENV{PREFIX}/$dist_name");
   
           cmd("cp -R $ENV{PREFIX}/* $ENV{PREFIX}_/");
@@ -75,7 +111,7 @@ $fatpacked{"App/stew/builder.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
       cmd("mv $ENV{PREFIX}_ $ENV{PREFIX}");
   
       if (!$@) {
-          warn sprintf "Done installing '%s'\n", $stew->package;
+          info sprintf "Done installing '%s'\n", $stew->package;
           $self->{snapshot}->mark_installed($stew);
       }
   
@@ -126,7 +162,7 @@ $fatpacked{"App/stew/builder.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
   
       my @makedepends = $stew->makedepends;
       if (@makedepends) {
-          warn "Found make dependencies: @makedepends\n";
+          info "Found make dependencies: @makedepends\n";
       }
       foreach my $makedepends (@makedepends) {
           my $stew_file = $self->{cache}->get_stew_filepath($makedepends);
@@ -134,7 +170,7 @@ $fatpacked{"App/stew/builder.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
   
           chdir $self->{root_dir};
   
-          warn sprintf "Preparing make dependency '%s'\n", $stew->package;
+          info sprintf "Preparing make dependency '%s'\n", $stew->package;
           $self->_prepare($stew);
   
           chdir $self->{root_dir};
@@ -147,7 +183,7 @@ $fatpacked{"App/stew/builder.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<
   
       my @depends = $stew->depends;
       if (@depends) {
-          warn "Found dependencies: @depends\n";
+          info "Found dependencies: @depends\n";
       }
       foreach my $depends (@depends) {
           my $stew_file = $self->{cache}->get_stew_filepath($depends);
@@ -464,6 +500,7 @@ $fatpacked{"App/stew/repo.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'A
       bless $self, $class;
   
       $self->{path} = $params{path};
+      $self->{path} .= '/' unless $self->{path} =~ m{/$};
   
       return $self;
   }
@@ -472,7 +509,7 @@ $fatpacked{"App/stew/repo.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'A
       my $self = shift;
       my ($name, $to) = @_;
   
-      my $full_name = File::Spec->catfile($self->{path}, 'stew', $name . '.stew');
+      my $full_name = $self->{path} . File::Spec->catfile('stew', $name . '.stew');
   
       return $self->mirror_file($full_name, $to);
   }
@@ -481,7 +518,7 @@ $fatpacked{"App/stew/repo.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'A
       my $self = shift;
       my ($os, $arch, $filename, $to) = @_;
   
-      my $full_name = File::Spec->catfile($self->{path}, 'src', $filename);
+      my $full_name = $self->{path} . File::Spec->catfile('src', $filename);
   
       return $self->mirror_file($full_name, $to);
   }
@@ -490,7 +527,7 @@ $fatpacked{"App/stew/repo.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'A
       my $self = shift;
       my ($os, $arch, $name, $to) = @_;
   
-      my $full_name = File::Spec->catfile($self->{path}, 'cache', $os, $arch, $name . '.stew');
+      my $full_name = $self->{path} . File::Spec->catfile('cache', $os, $arch, $name . '-dist.tar.gz');
   
       return $self->mirror_file($full_name, $to);
   }
