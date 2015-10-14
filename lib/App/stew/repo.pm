@@ -17,6 +17,7 @@ sub new {
     bless $self, $class;
 
     $self->{path} = $params{path};
+    $self->{path} .= '/' unless $self->{path} =~ m{/$};
 
     return $self;
 }
@@ -25,7 +26,7 @@ sub mirror_stew {
     my $self = shift;
     my ($name, $to) = @_;
 
-    my $full_name = File::Spec->catfile($self->{path}, 'stew', $name . '.stew');
+    my $full_name = $self->{path} . File::Spec->catfile('stew', $name . '.stew');
 
     return $self->mirror_file($full_name, $to);
 }
@@ -34,7 +35,7 @@ sub mirror_src {
     my $self = shift;
     my ($os, $arch, $filename, $to) = @_;
 
-    my $full_name = File::Spec->catfile($self->{path}, 'src', $filename);
+    my $full_name = $self->{path} . File::Spec->catfile('src', $filename);
 
     return $self->mirror_file($full_name, $to);
 }
@@ -43,7 +44,7 @@ sub mirror_dist {
     my $self = shift;
     my ($os, $arch, $name, $to) = @_;
 
-    my $full_name = File::Spec->catfile($self->{path}, 'cache', $os, $arch, $name . '.stew');
+    my $full_name = $self->{path} . File::Spec->catfile('cache', $os, $arch, $name . '-dist.tar.gz');
 
     return $self->mirror_file($full_name, $to);
 }

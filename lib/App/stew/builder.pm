@@ -5,7 +5,7 @@ use warnings;
 
 use File::Copy qw(copy);
 use File::Path qw(mkpath rmtree);
-use App::stew::util qw(cmd);
+use App::stew::util qw(cmd info debug);
 
 sub new {
     my $class = shift;
@@ -27,23 +27,22 @@ sub build {
     my ($stew) = @_;
 
     if ($self->{snapshot}->is_installed($stew)) {
-        warn sprintf "'%s' is up to date\n", $stew->package;
-        #warn sprintf "Already installed '%s'", $stew->package;
+        info sprintf "'%s' is up to date\n", $stew->package;
         return;
     }
 
-    warn sprintf "Building & installing '%s'...\n", $stew->package;
+    info sprintf "Building & installing '%s'...\n", $stew->package;
 
     mkpath($ENV{PREFIX});
 
-    warn sprintf "Resolving dependencies...\n", $stew->package;
+    info sprintf "Resolving dependencies...\n", $stew->package;
 
     $self->_resolve_dependencies($stew);
 
-    warn sprintf "Preparing '%s'...\n", $stew->package;
+    info sprintf "Preparing '%s'...\n", $stew->package;
     $self->_prepare($stew);
 
-    warn sprintf "Building '%s'...\n", $stew->package;
+    info sprintf "Building '%s'...\n", $stew->package;
     $self->_build($stew);
 
     cmd("mv $ENV{PREFIX} $ENV{PREFIX}_");
@@ -51,13 +50,13 @@ sub build {
     eval {
         mkpath($ENV{PREFIX});
 
-        warn sprintf "Installing '%s'...\n", $stew->package;
+        info sprintf "Installing '%s'...\n", $stew->package;
         $self->_install($stew);
 
         my $dist_name = sprintf '%s-dist.tar.gz', $stew->package;
         cmd("cd $ENV{PREFIX}; tar czf $dist_name *");
 
-        warn sprintf "Caching '%s'...\n", $stew->package;
+        info sprintf "Caching '%s'...\n", $stew->package;
         $self->{cache}->cache_dist("$ENV{PREFIX}/$dist_name");
 
         cmd("cp -R $ENV{PREFIX}/* $ENV{PREFIX}_/");
@@ -67,7 +66,7 @@ sub build {
     cmd("mv $ENV{PREFIX}_ $ENV{PREFIX}");
 
     if (!$@) {
-        warn sprintf "Done installing '%s'\n", $stew->package;
+        info sprintf "Done installing '%s'\n", $stew->package;
         $self->{snapshot}->mark_installed($stew);
     }
 
@@ -118,7 +117,7 @@ sub _resolve_dependencies {
 
     my @makedepends = $stew->makedepends;
     if (@makedepends) {
-        warn "Found make dependencies: @makedepends\n";
+        info "Found make dependencies: @makedepends\n";
     }
     foreach my $makedepends (@makedepends) {
         my $stew_file = $self->{cache}->get_stew_filepath($makedepends);
@@ -126,7 +125,7 @@ sub _resolve_dependencies {
 
         chdir $self->{root_dir};
 
-        warn sprintf "Preparing make dependency '%s'\n", $stew->package;
+        info sprintf "Preparing make dependency '%s'\n", $stew->package;
         $self->_prepare($stew);
 
         chdir $self->{root_dir};
@@ -139,7 +138,7 @@ sub _resolve_dependencies {
 
     my @depends = $stew->depends;
     if (@depends) {
-        warn "Found dependencies: @depends\n";
+        info "Found dependencies: @depends\n";
     }
     foreach my $depends (@depends) {
         my $stew_file = $self->{cache}->get_stew_filepath($depends);
