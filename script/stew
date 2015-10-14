@@ -64,8 +64,9 @@ my $builder = App::stew::builder->new(
 
 $ENV{STEW_LOG_LEVEL} = $opt_verbose ? 1 : 0;
 $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
+unlink $ENV{STEW_LOG_FILE};
 
-warn "Updating local repository...\n";
+info "Updating local repository...";
 
 my @stew_pkgs;
 foreach my $package (@packages) {
@@ -73,7 +74,7 @@ foreach my $package (@packages) {
 }
 
 unless (@stew_pkgs) {
-    error("No packages were found");
+    error "No packages were found";
 }
 
 $ENV{STEW_OS}   = $opt_os;
@@ -86,4 +87,4 @@ foreach my $stew_pkg (@stew_pkgs) {
     $builder->build($stew_pkg);
 }
 
-info("Done");
+info "Done";
