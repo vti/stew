@@ -9,15 +9,6 @@ our @EXPORT_OK = qw(info debug error slurp_file write_file cmd);
 
 use Carp qw(croak);
 
-sub debug {
-    print STDERR @_, "\n" if $ENV{STEW_LOG_LEVEL};
-
-    open my $fh, '>>', $ENV{STEW_LOG_FILE}
-      or die "Can't open logfile '$ENV{STEW_LOG_FILE}': $!";
-    print $fh @_, "\n";
-    close $fh;
-}
-
 sub slurp_file {
     my ($file) = @_;
 
@@ -34,12 +25,19 @@ sub write_file {
     close $fh;
 }
 
+sub debug {
+    print STDERR @_, "\n" if $ENV{STEW_LOG_LEVEL};
+
+    _log(@_);
+}
+
 sub info {
+    _log(@_);
     warn join(' ', @_) . "\n";
 }
 
 sub error {
-    debug(@_);
+    _log(@_);
     croak("ERROR: " . join(' ', @_));
 }
 
@@ -48,17 +46,23 @@ sub cmd {
 
     my $cmd = join ' && ', @_;
 
-    #my $redirect = $opt_verbose ? '' : ' > /dev/null';
-    $cmd = "sh -c \"$cmd 2>&1 > /dev/null\" 2>&1 >> /dev/null";
+    $cmd = "sh -c \"$cmd 2>&1\" 2>&1 >> $ENV{STEW_LOG_FILE}";
 
-    #warn $cmd;
-    #_logn($cmd);
+    _log($cmd);
 
     #unless ($opt_dry_run) {
-        my $exit = system($cmd);
+    my $exit = system($cmd);
 
-        _error("Command failed: $cmd") if $exit;
+    error("Command failed: $cmd") if $exit;
+
     #}
+}
+
+sub _log {
+    open my $fh, '>>', $ENV{STEW_LOG_FILE}
+      or die "Can't open logfile '$ENV{STEW_LOG_FILE}': $!";
+    print $fh @_, "\n";
+    close $fh;
 }
 
 1;
