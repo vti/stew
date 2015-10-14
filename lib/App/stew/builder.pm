@@ -27,22 +27,22 @@ sub build {
     my ($stew) = @_;
 
     if ($self->{snapshot}->is_installed($stew)) {
-        info sprintf "'%s' is up to date\n", $stew->package;
+        info sprintf "'%s' is up to date", $stew->package;
         return;
     }
 
-    info sprintf "Building & installing '%s'...\n", $stew->package;
+    info sprintf "Building & installing '%s'...", $stew->package;
 
     mkpath($ENV{PREFIX});
 
-    info sprintf "Resolving dependencies...\n", $stew->package;
+    info sprintf "Resolving dependencies...", $stew->package;
+
+    info sprintf "Preparing '%s'...", $stew->package;
+    $self->_prepare($stew);
 
     $self->_resolve_dependencies($stew);
 
-    info sprintf "Preparing '%s'...\n", $stew->package;
-    $self->_prepare($stew);
-
-    info sprintf "Building '%s'...\n", $stew->package;
+    info sprintf "Building '%s'...", $stew->package;
     $self->_build($stew);
 
     cmd("mv $ENV{PREFIX} $ENV{PREFIX}_");
@@ -50,13 +50,13 @@ sub build {
     eval {
         mkpath($ENV{PREFIX});
 
-        info sprintf "Installing '%s'...\n", $stew->package;
+        info sprintf "Installing '%s'...", $stew->package;
         $self->_install($stew);
 
         my $dist_name = sprintf '%s-dist.tar.gz', $stew->package;
         cmd("cd $ENV{PREFIX}; tar czf $dist_name *");
 
-        info sprintf "Caching '%s'...\n", $stew->package;
+        info sprintf "Caching '%s'...", $stew->package;
         $self->{cache}->cache_dist("$ENV{PREFIX}/$dist_name");
 
         cmd("cp -R $ENV{PREFIX}/* $ENV{PREFIX}_/");
@@ -66,7 +66,7 @@ sub build {
     cmd("mv $ENV{PREFIX}_ $ENV{PREFIX}");
 
     if (!$@) {
-        info sprintf "Done installing '%s'\n", $stew->package;
+        info sprintf "Done installing '%s'", $stew->package;
         $self->{snapshot}->mark_installed($stew);
     }
 
@@ -117,7 +117,7 @@ sub _resolve_dependencies {
 
     my @makedepends = $stew->makedepends;
     if (@makedepends) {
-        info "Found make dependencies: @makedepends\n";
+        info "Found make dependencies: @makedepends";
     }
     foreach my $makedepends (@makedepends) {
         my $stew_file = $self->{cache}->get_stew_filepath($makedepends);
@@ -125,20 +125,21 @@ sub _resolve_dependencies {
 
         chdir $self->{root_dir};
 
-        info sprintf "Preparing make dependency '%s'\n", $stew->package;
+        info sprintf "Preparing make dependency '%s'", $stew->package;
         $self->_prepare($stew);
 
         chdir $self->{root_dir};
 
-        if (!-e sprintf '%s/%s', $work_dir, $stew->package) {
-            cmd(sprintf "ln -s $build_dir/%s/%s $work_dir",
+        my $to = sprintf '%s/%s', $work_dir, $stew->package;
+        if (!-e $to) {
+            cmd(sprintf "ln -s $build_dir/%s/%s $to",
                 $stew->package, $stew->package);
         }
     }
 
     my @depends = $stew->depends;
     if (@depends) {
-        info "Found dependencies: @depends\n";
+        info "Found dependencies: @depends";
     }
     foreach my $depends (@depends) {
         my $stew_file = $self->{cache}->get_stew_filepath($depends);
