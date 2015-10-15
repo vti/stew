@@ -5,6 +5,7 @@ use warnings;
 
 use File::Spec   ();
 use Data::Dumper ();
+use Carp qw(croak);
 use App::stew::util qw(slurp_file write_file);
 
 sub new {
@@ -15,6 +16,7 @@ sub new {
     bless $self, $class;
 
     $self->{base} = $params{base};
+    croak 'base is required' unless $self->{base};
 
     $self->{snapshot} = {};
     $self->load;

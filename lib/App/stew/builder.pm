@@ -3,9 +3,10 @@ package App::stew::builder;
 use strict;
 use warnings;
 
+use Carp qw(croak);
 use File::Copy qw(copy);
 use File::Path qw(mkpath rmtree);
-use App::stew::util qw(cmd info debug);
+use App::stew::util qw(cmd info debug error);
 
 sub new {
     my $class = shift;
@@ -31,6 +32,8 @@ sub build {
         return;
     }
 
+    croak '$ENV{PREFIX} not defined' unless $ENV{PREFIX};
+
     info sprintf "Building & installing '%s'...", $stew->package;
 
     mkpath($ENV{PREFIX});
@@ -45,11 +48,11 @@ sub build {
     info sprintf "Building '%s'...", $stew->package;
     $self->_build($stew);
 
+    mkpath($ENV{PREFIX});
     cmd("mv $ENV{PREFIX} $ENV{PREFIX}_");
+    mkpath($ENV{PREFIX});
 
     eval {
-        mkpath($ENV{PREFIX});
-
         info sprintf "Installing '%s'...", $stew->package;
         $self->_install($stew);
 
@@ -59,16 +62,18 @@ sub build {
         info sprintf "Caching '%s'...", $stew->package;
         $self->{cache}->cache_dist("$ENV{PREFIX}/$dist_name");
 
+        unlink "$ENV{PREFIX}/$dist_name";
+
         cmd("cp -R $ENV{PREFIX}/* $ENV{PREFIX}_/");
-        rmtree($ENV{PREFIX});
     };
 
+    rmtree($ENV{PREFIX});
     cmd("mv $ENV{PREFIX}_ $ENV{PREFIX}");
 
-    if (!$@) {
-        info sprintf "Done installing '%s'", $stew->package;
-        $self->{snapshot}->mark_installed($stew);
-    }
+    die $@ if $@;
+
+    info sprintf "Done installing '%s'", $stew->package;
+    $self->{snapshot}->mark_installed($stew);
 
     return $self;
 }
@@ -86,7 +91,7 @@ sub _prepare {
     my $src_file = $self->{cache}->get_src_filepath($stew);
 
     #warn "Copying '$src_file' to '$work_dir'";
-    copy($src_file, $work_dir);
+    copy($src_file, $work_dir) or error("Copy '$src_file' to '$work_dir' failed: $!");
 
     my @commands = $stew->run('prepare');
     cmd(@commands);
@@ -96,6 +101,9 @@ sub _build {
     my $self = shift;
     my ($stew) = @_;
 
+    my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
+    chdir($work_dir);
+
     my @commands = $stew->run('build');
     cmd(@commands);
 }
@@ -103,6 +111,9 @@ sub _build {
 sub _install {
     my $self = shift;
     my ($stew) = @_;
+
+    my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
+    chdir($work_dir);
 
     my @commands = $stew->run('install');
     cmd(@commands);

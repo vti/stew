@@ -13,14 +13,14 @@ sub slurp_file {
     my ($file) = @_;
 
     local $/;
-    open my $fh, '<', $file or _error("Can't read file '$file': $!");
+    open my $fh, '<', $file or error("Can't read file '$file': $!");
     return <$fh>;
 }
 
 sub write_file {
     my ($file, $content) = @_;
 
-    open my $fh, '>', $file or _error("Can't write file '$file': $!");
+    open my $fh, '>', $file or error("Can't write file '$file': $!");
     print $fh $content;
     close $fh;
 }

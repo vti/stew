@@ -4,8 +4,10 @@ use strict;
 use warnings;
 
 use File::Spec ();
+use File::Path qw(mkpath);
 use File::Copy qw(copy);
-use File::Basename ();
+use File::Basename qw(dirname basename);
+use App::stew::util qw(error);
 use App::stew::file;
 
 sub new {
@@ -50,11 +52,14 @@ sub cache_dist {
     my ($dist_path) = @_;
 
     my $to = File::Spec->catfile($self->{path}, '.cache', 'dist',
-        $self->{os}, $self->{arch}, File::Basename::basename($dist_path));
+        $self->{os}, $self->{arch}, basename($dist_path));
 
     #warn "Caching '$dist_path' to '$to'";
 
-    copy $dist_path, $to;
+    mkpath dirname $to;
+    copy($dist_path, $to) or error("Can't copy '$dist_path' to '$to': $!");
+
+    return $self;
 }
 
 sub get_stew_filepath {
