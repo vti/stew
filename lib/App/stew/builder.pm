@@ -64,7 +64,7 @@ sub build {
 
         unlink "$ENV{PREFIX}/$dist_name";
 
-        cmd("cp -R $ENV{PREFIX}/* $ENV{PREFIX}_/");
+        cmd("cp --remove-destination -R $ENV{PREFIX}/* $ENV{PREFIX}_/");
     };
 
     rmtree($ENV{PREFIX});
