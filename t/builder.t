@@ -5,32 +5,13 @@ use Test::More;
 use File::Temp qw(tempdir);
 use File::Basename qw(dirname);
 use File::Path qw(mkpath);
+use File::Copy qw(copy);
 use App::stew::snapshot;
 use App::stew::builder;
 use App::stew::cache;
 
-my $STEW = <<'EOF';
-$name    = "package";
-$version = "1.0";
-$package = "$name-$version";
-$file    = "$package";
-
-prepare {
-
-};
-
-build {
-
-};
-
-install {
-    "cp $package $ENV{PREFIX}"
-};
-EOF
-
 subtest 'installs ' => sub {
-    my $root_dir = tempdir();
-    warn $root_dir;
+    my $root_dir = tempdir(CLEANUP => 1);
     my $build_dir = "$root_dir/build";
     my $base_dir  = "$root_dir/opt";
 
@@ -40,8 +21,8 @@ subtest 'installs ' => sub {
     $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
     $ENV{PREFIX}        = "$base_dir/local";
 
-    _write_file("$build_dir/.cache/src/package-1.0",   'archive');
-    _write_file("$build_dir/.cache/stew/package.stew", $STEW);
+    _copy("t/data/package-1.0.tar.gz", "$build_dir/.cache/src/package-1.0.tar.gz");
+    _copy("t/data/package-1.0.stew", "$build_dir/.cache/stew/package-1.0.stew");
 
     my $builder = _build_builder(
         base_dir  => $base_dir,
@@ -49,24 +30,49 @@ subtest 'installs ' => sub {
         build_dir => $build_dir
     );
 
-    my $stew = App::stew::file->parse("$build_dir/.cache/stew/package.stew");
+    my $stew = App::stew::file->parse("$build_dir/.cache/stew/package-1.0.stew");
 
     $builder->build($stew);
 
-    ok -f "$base_dir/local/package-1.0";
+    ok -f "$base_dir/local/foo";
+    ok -f "$base_dir/stew.snapshot";
+};
+
+subtest 'installs from dist when available' => sub {
+    my $root_dir = tempdir(CLEANUP => 1);
+    my $build_dir = "$root_dir/build";
+    my $base_dir  = "$root_dir/opt";
+
+    mkpath $build_dir;
+    mkpath $base_dir;
+
+    $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
+    $ENV{PREFIX}        = "$base_dir/local";
+
+    _copy("t/data/package-1.0-dist.tar.gz", "$build_dir/.cache/dist/linux/x86_64/package-1.0-dist.tar.gz");
+    _copy("t/data/package-1.0.stew", "$build_dir/.cache/stew/package-1.0.stew");
+
+    my $builder = _build_builder(
+        base_dir  => $base_dir,
+        root_dir  => $root_dir,
+        build_dir => $build_dir
+    );
+
+    my $stew = App::stew::file->parse("$build_dir/.cache/stew/package-1.0.stew");
+
+    $builder->build($stew);
+
+    ok -f "$base_dir/local/foo";
     ok -f "$base_dir/stew.snapshot";
 };
 
 done_testing;
 
-sub _write_file {
-    my ($file, $content) = @_;
+sub _copy {
+    my ($from, $to) = @_;
 
-    mkpath dirname $file;
-
-    open my $fh, '>', $file or die $!;
-    print $fh $content;
-    close $fh;
+    mkpath dirname $to;
+    copy($from, $to);
 }
 
 sub _build_builder {

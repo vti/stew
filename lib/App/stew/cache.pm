@@ -82,7 +82,7 @@ sub get_dist_filepath {
     my ($stew) = @_;
 
     return File::Spec->catfile($self->{path}, '.cache', 'dist',
-        $stew->package . '-dist.tar.gz');
+        $self->{os}, $self->{arch}, $stew->package . '-dist.tar.gz');
 }
 
 sub _get_stew {

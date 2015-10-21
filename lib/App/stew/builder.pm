@@ -3,9 +3,12 @@ package App::stew::builder;
 use strict;
 use warnings;
 
+use Error::Tiny;
+use Cwd qw(getcwd);
 use Carp qw(croak);
 use File::Copy qw(copy);
 use File::Path qw(mkpath rmtree);
+use File::Basename qw(basename);
 use App::stew::util qw(cmd info debug error);
 
 sub new {
@@ -38,12 +41,61 @@ sub build {
 
     mkpath($ENV{PREFIX});
 
-    info sprintf "Resolving dependencies...", $stew->package;
+    my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
+
+    my $cwd = getcwd();
+    try {
+        mkpath($work_dir);
+        chdir($work_dir);
+
+        info sprintf "Resolving dependencies...", $stew->package;
+        $self->_resolve_dependencies($stew);
+
+        my $dist_path = $self->{cache}->get_dist_filepath($stew);
+        if (-f $dist_path) {
+            $self->_install_from_binary($stew, $dist_path);
+        }
+        else {
+            $self->_install_from_source($stew);
+        }
+
+        chdir $cwd;
+    } catch {
+        my $e = shift;
+
+        chdir $cwd;
+
+        die $e;
+    };
+
+    info sprintf "Done installing '%s'", $stew->package;
+    $self->{snapshot}->mark_installed($stew);
+
+    return $self;
+}
+
+sub _install_from_binary {
+    my $self = shift;
+    my ($stew, $dist_path) = @_;
+
+    my $basename = basename $dist_path;
+
+    cmd("cp $dist_path .");
+    cmd("tar xzf $basename");
+    chdir $stew->package;
+
+    info sprintf "Installing from binary '%s'...", $stew->package;
+    $self->_install($stew);
+
+    return $self;
+}
+
+sub _install_from_source {
+    my $self = shift;
+    my ($stew) = @_;
 
     info sprintf "Preparing '%s'...", $stew->package;
     $self->_prepare($stew);
-
-    $self->_resolve_dependencies($stew);
 
     info sprintf "Building '%s'...", $stew->package;
     $self->_build($stew);
@@ -72,9 +124,6 @@ sub build {
 
     die $@ if $@;
 
-    info sprintf "Done installing '%s'", $stew->package;
-    $self->{snapshot}->mark_installed($stew);
-
     return $self;
 }
 
@@ -83,10 +132,6 @@ sub _prepare {
     my ($stew) = @_;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
-
-    #warn "Creating '$work_dir'";
-    mkpath($work_dir);
-    chdir($work_dir);
 
     my $src_file = $self->{cache}->get_src_filepath($stew);
 

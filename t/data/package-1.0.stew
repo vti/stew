@@ -1,0 +1,16 @@
+$name    = "package";
+$version = "1.0";
+$package = "$name-$version";
+$file    = "$package.tar.gz";
+
+prepare {
+    "tar xzf $file"
+};
+
+build {
+};
+
+install {
+    "cd $package",
+    "cp foo $ENV{PREFIX}"
+};

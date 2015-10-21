@@ -3,7 +3,7 @@ package App::stew::file;
 use strict;
 use warnings;
 
-use App::stew::util qw(slurp_file);
+use App::stew::util qw(slurp_file error);
 
 sub new {
     my $class = shift;
@@ -87,7 +87,7 @@ sub _sandbox {
     1;
 EOP
 
-    eval $package or _error("Error compiling '$file': $@");
+    eval $package or error("Error compiling '$file': $@");
 
     return $class_name;
 }
