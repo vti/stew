@@ -126,21 +126,19 @@ sub _tree_diff {
     my $diff_pos = 0;
 
     for (my $pos = 0; $pos < @$tree1; $pos++) {
-        while ($pos < @$tree1
-            && $diff_pos < @$tree2
-            && $tree1->[$pos] eq $tree2->[$diff_pos])
-        {
-            $pos++;
-            $diff_pos++;
-        }
-
-        while ($pos < @$tree1
-            && $diff_pos < @$tree2
+        while ($diff_pos < @$tree2
             && $tree1->[$pos] ne $tree2->[$diff_pos])
         {
             push @diff, $tree2->[$diff_pos];
             $diff_pos++;
         }
+
+        if ($diff_pos < @$tree2 && $tree1->[$pos] eq $tree2->[$diff_pos]) {
+            $diff_pos++;
+            next;
+        }
+
+        last if $diff_pos >= @$tree2;
     }
 
     while ($diff_pos < @$tree2) {

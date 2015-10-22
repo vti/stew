@@ -20,11 +20,18 @@ subtest '_tree: returns file tree' => sub {
 };
 
 subtest '_tree_diff: returns diff' => sub {
+    is_deeply _tree_diff([], []), [];
+    is_deeply _tree_diff([], ['foo']), ['foo'];
     is_deeply _tree_diff(['foo'], ['foo']), [];
     is_deeply _tree_diff(['foo'], ['bar']), ['bar'];
     is_deeply _tree_diff(['foo'], ['foo', 'bar']), ['bar'];
+    is_deeply _tree_diff(['foo', 'bar'], []), [];
     is_deeply _tree_diff(['foo', 'bar'], ['foo', 'baz']), ['baz'];
     is_deeply _tree_diff(['foo', 'bar'], ['foo', 'bar', 'baz']), ['baz'];
+
+    is_deeply _tree_diff(['foo', 'bar'],
+        ['other', 'other', 'foo', 'other', 'other', 'bar']),
+      ['other', 'other', 'other', 'other'];
 };
 
 sub _write_file {
