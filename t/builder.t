@@ -10,7 +10,7 @@ use App::stew::snapshot;
 use App::stew::builder;
 use App::stew::cache;
 
-subtest 'installs ' => sub {
+subtest 'installs from source' => sub {
     my $root_dir = tempdir(CLEANUP => 1);
     my $build_dir = "$root_dir/build";
     my $base_dir  = "$root_dir/opt";
@@ -36,6 +36,33 @@ subtest 'installs ' => sub {
 
     ok -f "$base_dir/local/foo";
     ok -f "$base_dir/stew.snapshot";
+};
+
+subtest 'caches binary' => sub {
+    my $root_dir = tempdir(CLEANUP => 1);
+    my $build_dir = "$root_dir/build";
+    my $base_dir  = "$root_dir/opt";
+
+    mkpath $build_dir;
+    mkpath $base_dir;
+
+    $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
+    $ENV{PREFIX}        = "$base_dir/local";
+
+    _copy("t/data/package-1.0.tar.gz", "$build_dir/.cache/src/package-1.0.tar.gz");
+    _copy("t/data/package-1.0.stew", "$build_dir/.cache/stew/package-1.0.stew");
+
+    my $builder = _build_builder(
+        base_dir  => $base_dir,
+        root_dir  => $root_dir,
+        build_dir => $build_dir
+    );
+
+    my $stew = App::stew::file->parse("$build_dir/.cache/stew/package-1.0.stew");
+
+    $builder->build($stew);
+
+    ok -f "$build_dir/.cache/dist/linux/x86_64/package-1.0-dist.tar.gz";
 };
 
 subtest 'installs from dist when available' => sub {

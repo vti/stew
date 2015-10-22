@@ -109,7 +109,7 @@ sub _install_from_source {
         my $dist_name = sprintf '%s-dist.tar.gz', $stew->package;
         cmd("cd $ENV{PREFIX}; tar czf $dist_name *");
 
-        info sprintf "Caching '%s'...", $stew->package;
+        info sprintf "Caching '%s' as '$dist_name'...", $stew->package;
         $self->{cache}->cache_dist("$ENV{PREFIX}/$dist_name");
 
         _unlink "$ENV{PREFIX}/$dist_name";
