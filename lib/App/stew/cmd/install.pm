@@ -70,7 +70,8 @@ sub run {
         os   => $opt_os,
         arch => $opt_arch
     );
-    my $snapshot = App::stew::snapshot->new(base => $opt_base)->load;
+    my $snapshot = App::stew::snapshot->new(base => $opt_base);
+    $snapshot->load;
     my $builder = App::stew::builder->new(
         root_dir  => $root_dir,
         build_dir => $build_dir,

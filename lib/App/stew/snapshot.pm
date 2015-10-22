@@ -48,7 +48,7 @@ sub load {
 
     $self->{snapshot} = $installed;
 
-    return $self;
+    return $self->{snapshot};
 }
 
 sub mark_installed {
