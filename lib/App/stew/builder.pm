@@ -3,7 +3,6 @@ package App::stew::builder;
 use strict;
 use warnings;
 
-use Error::Tiny;
 use Cwd qw(getcwd);
 use Carp qw(croak);
 use File::Copy qw(copy);
@@ -44,7 +43,7 @@ sub build {
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
 
     my $cwd = getcwd();
-    try {
+    eval {
         mkpath($work_dir);
         chdir($work_dir);
 
@@ -60,7 +59,7 @@ sub build {
         }
 
         chdir $cwd;
-    } catch {
+    } or do {
         my $e = shift;
 
         chdir $cwd;
