@@ -53,9 +53,10 @@ sub load {
 
 sub mark_installed {
     my $self = shift;
-    my ($stew) = @_;
+    my ($stew, $files) = @_;
 
-    $self->{snapshot}->{$stew->package}++;
+    $self->{snapshot}->{$stew->package} = {};
+    $self->{snapshot}->{$stew->package}->{files} = [@$files];
     $self->store;
 
     return $self;

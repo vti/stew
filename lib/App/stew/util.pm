@@ -5,8 +5,9 @@ use warnings;
 
 use base 'Exporter';
 
-our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _copy _unlink);
+our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _copy _unlink _tree _tree_diff);
 
+use File::Find qw(find);
 use Carp qw(croak);
 use File::Copy qw(copy);
 use File::Path qw(mkpath rmtree);
@@ -47,6 +48,7 @@ sub _chdir {
     my ($dir) = @_;
 
     debug(qq{Entering '$dir'});
+    die "Directory '$dir' does not exist" unless -d $dir;
     chdir($dir);
 }
 
@@ -93,6 +95,60 @@ sub _log {
       or die "Can't open logfile '$ENV{STEW_LOG_FILE}': $!";
     print $fh @_, "\n";
     close $fh;
+}
+
+sub _tree {
+    my ($dir, $prefix) = @_;
+
+    my @tree;
+    find(
+        sub {
+            return unless -f $_;
+
+            my $name = $File::Find::name;
+
+            if ($prefix) {
+                $name =~ s{^$prefix/?}{};
+            }
+
+            push @tree, $name;
+        },
+        $dir
+    );
+
+    return [sort @tree];
+}
+
+sub _tree_diff {
+    my ($tree1, $tree2) = @_;
+
+    my @diff;
+    my $diff_pos = 0;
+
+    for (my $pos = 0; $pos < @$tree1; $pos++) {
+        while ($pos < @$tree1
+            && $diff_pos < @$tree2
+            && $tree1->[$pos] eq $tree2->[$diff_pos])
+        {
+            $pos++;
+            $diff_pos++;
+        }
+
+        while ($pos < @$tree1
+            && $diff_pos < @$tree2
+            && $tree1->[$pos] ne $tree2->[$diff_pos])
+        {
+            push @diff, $tree2->[$diff_pos];
+            $diff_pos++;
+        }
+    }
+
+    while ($diff_pos < @$tree2) {
+        push @diff, $tree2->[$diff_pos];
+        $diff_pos++;
+    }
+
+    return \@diff;
 }
 
 1;
