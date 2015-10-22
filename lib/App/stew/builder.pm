@@ -5,10 +5,9 @@ use warnings;
 
 use Cwd qw(getcwd);
 use Carp qw(croak);
-use File::Copy qw(copy);
-use File::Path qw(mkpath rmtree);
+use File::Path qw(rmtree);
 use File::Basename qw(basename);
-use App::stew::util qw(cmd info debug error);
+use App::stew::util qw(cmd info debug error _chdir _mkpath _copy _unlink);
 
 sub new {
     my $class = shift;
@@ -36,16 +35,16 @@ sub build {
 
     croak '$ENV{PREFIX} not defined' unless $ENV{PREFIX};
 
-    info sprintf "Building & installing '%s'...", $stew->package;
+    _mkpath($ENV{PREFIX});
 
-    mkpath($ENV{PREFIX});
+    info sprintf "Building & installing '%s'...", $stew->package;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
 
     my $cwd = getcwd();
     eval {
-        mkpath($work_dir);
-        chdir($work_dir);
+        _mkpath($work_dir);
+        _chdir($work_dir);
 
         info sprintf "Resolving dependencies...", $stew->package;
         $self->_resolve_dependencies($stew);
@@ -58,11 +57,11 @@ sub build {
             $self->_install_from_source($stew);
         }
 
-        chdir $cwd;
+        _chdir($cwd);
     } or do {
-        my $e = shift;
+        my $e = $@;
 
-        chdir $cwd;
+        _chdir($cwd);
 
         die $e;
     };
@@ -81,7 +80,7 @@ sub _install_from_binary {
 
     cmd("cp $dist_path .");
     cmd("tar xzf $basename");
-    chdir $stew->package;
+    _chdir($stew->package);
 
     info sprintf "Installing from binary '%s'...", $stew->package;
     $self->_install($stew);
@@ -99,9 +98,9 @@ sub _install_from_source {
     info sprintf "Building '%s'...", $stew->package;
     $self->_build($stew);
 
-    mkpath($ENV{PREFIX});
+    _mkpath($ENV{PREFIX});
     cmd("mv $ENV{PREFIX} $ENV{PREFIX}_");
-    mkpath($ENV{PREFIX});
+    _mkpath($ENV{PREFIX});
 
     eval {
         info sprintf "Installing '%s'...", $stew->package;
@@ -113,7 +112,7 @@ sub _install_from_source {
         info sprintf "Caching '%s'...", $stew->package;
         $self->{cache}->cache_dist("$ENV{PREFIX}/$dist_name");
 
-        unlink "$ENV{PREFIX}/$dist_name";
+        _unlink "$ENV{PREFIX}/$dist_name";
 
         cmd("cp --remove-destination -R $ENV{PREFIX}/* $ENV{PREFIX}_/");
     };
@@ -134,8 +133,7 @@ sub _prepare {
 
     my $src_file = $self->{cache}->get_src_filepath($stew);
 
-    #warn "Copying '$src_file' to '$work_dir'";
-    copy($src_file, $work_dir) or error("Copy '$src_file' to '$work_dir' failed: $!");
+    _copy($src_file, $work_dir) or error("Copy '$src_file' to '$work_dir' failed: $!");
 
     my @commands = $stew->run('prepare');
     cmd(@commands);
@@ -146,7 +144,7 @@ sub _build {
     my ($stew) = @_;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
-    chdir($work_dir);
+    _chdir($work_dir);
 
     my @commands = $stew->run('build');
     cmd(@commands);
@@ -157,7 +155,7 @@ sub _install {
     my ($stew) = @_;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
-    chdir($work_dir);
+    _chdir($work_dir);
 
     my @commands = $stew->run('install');
     cmd(@commands);
@@ -178,12 +176,12 @@ sub _resolve_dependencies {
         my $stew_file = $self->{cache}->get_stew_filepath($makedepends);
         my $stew      = App::stew::file->parse($stew_file);
 
-        chdir $self->{root_dir};
+        _chdir($self->{root_dir});
 
         info sprintf "Preparing make dependency '%s'", $stew->package;
         $self->_prepare($stew);
 
-        chdir $self->{root_dir};
+        _chdir($self->{root_dir});
 
         my $to = sprintf '%s/%s', $work_dir, $stew->package;
         if (!-e $to) {
@@ -200,11 +198,11 @@ sub _resolve_dependencies {
         my $stew_file = $self->{cache}->get_stew_filepath($depends);
         my $stew      = App::stew::file->parse($stew_file);
 
-        chdir $self->{root_dir};
+        _chdir($self->{root_dir});
 
         $self->build($stew);
 
-        chdir $self->{root_dir};
+        _chdir($self->{root_dir});
     }
 }
 

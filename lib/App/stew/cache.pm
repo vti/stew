@@ -4,10 +4,8 @@ use strict;
 use warnings;
 
 use File::Spec ();
-use File::Path qw(mkpath);
-use File::Copy qw(copy);
 use File::Basename qw(dirname basename);
-use App::stew::util qw(error);
+use App::stew::util qw(error _mkpath _copy);
 use App::stew::file;
 
 sub new {
@@ -56,8 +54,8 @@ sub cache_dist {
 
     #warn "Caching '$dist_path' to '$to'";
 
-    mkpath dirname $to;
-    copy($dist_path, $to) or error("Can't copy '$dist_path' to '$to': $!");
+    _mkpath dirname $to;
+    _copy($dist_path, $to) or error("Can't copy '$dist_path' to '$to': $!");
 
     return $self;
 }

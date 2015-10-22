@@ -4,10 +4,9 @@ use strict;
 use warnings;
 
 use HTTP::Tiny;
-use File::Copy ();
 use File::Basename ();
 use File::Path ();
-use App::stew::util qw(debug);
+use App::stew::util qw(debug _copy);
 
 sub new {
     my $class = shift;
@@ -61,7 +60,7 @@ sub mirror_file {
         HTTP::Tiny->new->mirror($in, $out);
     }
     else {
-        File::Copy::copy($in, $out) or return 0;
+        _copy($in, $out) or return 0;
     }
 
     return 1;

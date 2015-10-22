@@ -5,9 +5,11 @@ use warnings;
 
 use base 'Exporter';
 
-our @EXPORT_OK = qw(info debug error slurp_file write_file cmd);
+our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _copy _unlink);
 
 use Carp qw(croak);
+use File::Copy qw(copy);
+use File::Path qw(mkpath rmtree);
 
 sub slurp_file {
     my ($file) = @_;
@@ -41,6 +43,34 @@ sub error {
     croak("ERROR: " . join(' ', @_));
 }
 
+sub _chdir {
+    my ($dir) = @_;
+
+    debug(qq{Entering '$dir'});
+    chdir($dir);
+}
+
+sub _mkpath {
+    my ($dir) = @_;
+
+    debug(qq{Creating '$dir'});
+    mkpath($dir);
+}
+
+sub _copy {
+    my ($from, $to) = @_;
+
+    debug(qq{Copying '$from' -> '$to'});
+    copy($from, $to);
+}
+
+sub _unlink {
+    my ($file) = @_;
+
+    debug(qq{Unlinking '$file'});
+    unlink($file);
+}
+
 sub cmd {
     return unless @_;
 
@@ -48,7 +78,7 @@ sub cmd {
 
     $cmd = "sh -c \"$cmd 2>&1\" 2>&1 >> $ENV{STEW_LOG_FILE}";
 
-    _log($cmd);
+    debug($cmd);
 
     #unless ($opt_dry_run) {
     my $exit = system($cmd);
