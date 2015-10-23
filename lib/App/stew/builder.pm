@@ -145,6 +145,7 @@ sub _prepare {
     my ($stew) = @_;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
+    _mkpath $work_dir;
     _chdir($work_dir);
 
     my $src_file = $self->{cache}->get_src_filepath($stew);
