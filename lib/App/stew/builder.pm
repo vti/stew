@@ -91,8 +91,8 @@ sub _install_from_binary {
 
     my $tree = _tree(".");
     foreach my $file (@$tree) {
-        my $basename = basename $file;
-        _copy($file, "$ENV{PREFIX}/$basename");
+        _mkpath dirname "$ENV{PREFIX}/$file";
+        _copy($file, "$ENV{PREFIX}/$file");
     }
 
     return $tree;
