@@ -43,7 +43,7 @@ sub mirror_dist {
     my $self = shift;
     my ($os, $arch, $name, $to) = @_;
 
-    my $full_name = $self->{path} . File::Spec->catfile('cache', $os, $arch, $name . '-dist.tar.gz');
+    my $full_name = $self->{path} . File::Spec->catfile('dist', $os, $arch, $name . '-dist.tar.gz');
 
     return $self->mirror_file($full_name, $to);
 }
@@ -60,7 +60,9 @@ sub mirror_file {
         HTTP::Tiny->new->mirror($in, $out);
     }
     else {
-        _copy($in, $out) or return 0;
+        return 0 unless -f $in;
+
+        _copy($in, $out);
     }
 
     return 1;

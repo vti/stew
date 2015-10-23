@@ -3,6 +3,8 @@ package App::stew::env;
 use strict;
 use warnings;
 
+use App::stew::util qw(debug);
+
 sub setup {
     _unshift_env(PATH => "$ENV{PREFIX}/bin");
 
@@ -24,6 +26,8 @@ sub _unshift_env {
     else {
         $ENV{$var} = $value;
     }
+
+    debug "Setting ENV{$var}=$ENV{$var}";
 }
 
 1;

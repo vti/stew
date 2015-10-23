@@ -63,7 +63,7 @@ sub _copy {
     my ($from, $to) = @_;
 
     debug(qq{Copying '$from' -> '$to'});
-    copy($from, $to);
+    copy($from, $to) or croak "Cant copy '$from' -> '$to'";
 }
 
 sub _unlink {
