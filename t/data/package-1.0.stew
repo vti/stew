@@ -12,5 +12,6 @@ build {
 
 install {
     "cd $package",
-    "cp foo $ENV{PREFIX}"
+    "install -d $ENV{DESTDIR}/$ENV{PREFIX}/",
+    "install -m644 foo $ENV{DESTDIR}/$ENV{PREFIX}/foo"
 };

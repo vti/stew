@@ -76,7 +76,7 @@ subtest 'installs from dist when available' => sub {
     $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
     $ENV{PREFIX}        = "$base_dir/local";
 
-    _copy("t/data/package-1.0-dist.tar.gz", "$build_dir/.cache/dist/linux/x86_64/package-1.0-dist.tar.gz");
+    _copy("t/data/package-1.0.tar.gz", "$build_dir/.cache/src/package-1.0.tar.gz");
     _copy("t/data/package-1.0.stew", "$build_dir/.cache/stew/package-1.0.stew");
 
     my $builder = _build_builder(
@@ -86,6 +86,10 @@ subtest 'installs from dist when available' => sub {
     );
 
     my $stew = App::stew::file->parse("$build_dir/.cache/stew/package-1.0.stew");
+
+    $builder->build($stew);
+
+    unlink("$build_dir/.cache/src/package-1.0.tar.gz");
 
     $builder->build($stew);
 
