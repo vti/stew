@@ -3,7 +3,7 @@ package App::stew::builder;
 use strict;
 use warnings;
 
-use Cwd qw(getcwd);
+use Cwd qw(abs_path getcwd);
 use Carp qw(croak);
 use File::Path qw(rmtree);
 use File::Basename qw(basename dirname);
@@ -52,12 +52,10 @@ sub build {
         $self->_resolve_dependencies($stew);
 
         my $dist_path = $self->{cache}->get_dist_filepath($stew);
-        if (-f $dist_path) {
-            $tree = $self->_install_from_binary($stew, $dist_path);
-        }
-        else {
-            $tree = $self->_install_from_source($stew);
-        }
+
+        $self->_build_from_source($stew) unless -f $dist_path;
+
+        $tree = $self->_install_from_binary($stew, $dist_path);
 
         _chdir($cwd);
     } or do {
@@ -89,16 +87,12 @@ sub _install_from_binary {
     cmd("tar xzf $basename");
     _chdir($stew->package . '-dist');
 
-    my $tree = _tree(".");
-    foreach my $file (@$tree) {
-        _mkpath dirname "$ENV{PREFIX}/$file";
-        _copy($file, "$ENV{PREFIX}/$file");
-    }
+    cmd("cp --remove-destination -ra * /");
 
-    return $tree;
+    return _tree(".");
 }
 
-sub _install_from_source {
+sub _build_from_source {
     my $self = shift;
     my ($stew) = @_;
 
@@ -110,34 +104,23 @@ sub _install_from_source {
 
     _mkpath($ENV{PREFIX});
 
-    my $orig_tree = _tree $ENV{PREFIX};
+    my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
+    _chdir($work_dir);
+
+    my $dist_name = sprintf '%s-dist', $stew->package;
+    _mkpath $dist_name;
+    $ENV{DESTDIR} = abs_path($dist_name);
 
     info sprintf "Installing '%s'...", $stew->package;
     $self->_install($stew);
 
-    info "Calculating tree difference";
-    my $new_tree = _tree $ENV{PREFIX};
-    my $tree_diff = _tree_diff $orig_tree, $new_tree;
-
-    my $dist_name = sprintf '%s-dist', $stew->package;
-    _mkpath $dist_name;
-
-    foreach my $path (@$tree_diff) {
-        my $rel_filename = $path;
-        $rel_filename =~ s#^$ENV{PREFIX}/?##;
-
-        my $dest_path = "$dist_name/$rel_filename";
-        _mkpath dirname $dest_path;
-        _copy $path, $dest_path;
-    }
-
     my $dist_archive = "$dist_name.tar.gz";
-    cmd("tar czf $dist_archive $dist_name");
+    cmd("tar czhf $dist_archive $dist_name");
 
     info sprintf "Caching '%s' as '$dist_archive'...", $stew->package;
     $self->{cache}->cache_dist("$dist_archive");
 
-    return $tree_diff;
+    return $self;
 }
 
 sub _prepare {

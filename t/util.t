@@ -16,7 +16,7 @@ subtest '_tree: returns file tree' => sub {
 
     my $tree = _tree($tmp_dir, $tmp_dir);
 
-    is_deeply $tree, ['dir/dir/file', 'dir/file', 'file'];
+    is_deeply $tree, ['/dir/dir/file', '/dir/file', '/file'];
 };
 
 subtest '_tree_diff: returns diff' => sub {

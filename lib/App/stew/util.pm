@@ -108,7 +108,8 @@ sub _tree {
             my $name = $File::Find::name;
 
             if ($prefix) {
-                $name =~ s{^$prefix/?}{};
+                $name =~ s{^$prefix}{};
+                $name = "/$name" unless $name =~ m{^/};
             }
 
             push @tree, $name;
