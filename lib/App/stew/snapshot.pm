@@ -28,11 +28,20 @@ sub is_installed {
     my $self = shift;
     my ($stew) = @_;
 
-    if ($self->{snapshot}->{$stew->package}) {
+    my $package = ref $stew ? $stew->package : $stew;
+
+    if ($self->{snapshot}->{$package}) {
         return 1;
     }
 
     return 0;
+}
+
+sub get_package {
+    my $self = shift;
+    my ($package) = @_;
+
+    return $self->{snapshot}->{$package};
 }
 
 sub load {
@@ -57,6 +66,18 @@ sub mark_installed {
 
     $self->{snapshot}->{$stew->package} = {};
     $self->{snapshot}->{$stew->package}->{files} = [@$files];
+    $self->store;
+
+    return $self;
+}
+
+sub mark_uninstalled {
+    my $self = shift;
+    my ($stew) = @_;
+
+    my $package = ref $stew ? $stew->package : $stew;
+
+    delete $self->{snapshot}->{$package};
     $self->store;
 
     return $self;
