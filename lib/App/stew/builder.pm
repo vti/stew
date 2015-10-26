@@ -87,7 +87,9 @@ sub _install_from_binary {
     cmd("tar xzf $basename");
     _chdir($stew->package . '-dist');
 
-    cmd("cp --remove-destination -ra * /");
+    my $local_prefix = $ENV{PREFIX};
+    $local_prefix =~ s{^/+}{};
+    cmd("cp --remove-destination -ra $local_prefix/* $ENV{PREFIX}/");
 
     return _tree(".");
 }
