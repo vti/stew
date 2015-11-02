@@ -14,25 +14,24 @@ sub new {
     my $self = {};
     bless $self, $class;
 
-    $self->{argv} = $params{argv};
-
     return $self;
 }
 
 sub run {
     my $self = shift;
+    my (@argv) = @_;
 
     my $opt_base;
     my $opt_verbose;
     GetOptionsFromArray(
-        $self->{argv},
+        \@argv,
         "base=s"   => \$opt_base,
         "verbose"  => \$opt_verbose,
     ) or die "error";
 
     error("--base is required") unless $opt_base;
 
-    my (@packages) = @{$self->{argv} || []};
+    my (@packages) = @argv;
 
     my $snapshot = App::stew::snapshot->new(base => $opt_base);
     $snapshot->load;

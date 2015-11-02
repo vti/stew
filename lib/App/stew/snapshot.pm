@@ -26,15 +26,24 @@ sub new {
 
 sub is_installed {
     my $self = shift;
-    my ($stew) = @_;
-
-    my $package = ref $stew ? $stew->package : $stew;
+    my ($package) = @_;
 
     if ($self->{snapshot}->{$package}) {
         return 1;
     }
 
     return 0;
+}
+
+sub is_up_to_date {
+    my $self = shift;
+    my ($package, $version) = @_;
+
+    return 0 unless $self->is_installed($package);
+
+    return 0 unless $self->{snapshot}->{$package}->{version} eq $version;
+
+    return 1;
 }
 
 sub get_package {
@@ -62,10 +71,9 @@ sub load {
 
 sub mark_installed {
     my $self = shift;
-    my ($stew, $files) = @_;
+    my ($name, $version, $files) = @_;
 
-    $self->{snapshot}->{$stew->package} = {};
-    $self->{snapshot}->{$stew->package}->{files} = [@$files];
+    $self->{snapshot}->{$name} = {version => $version, files => $files};
     $self->store;
 
     return $self;
@@ -73,11 +81,9 @@ sub mark_installed {
 
 sub mark_uninstalled {
     my $self = shift;
-    my ($stew) = @_;
+    my ($name) = @_;
 
-    my $package = ref $stew ? $stew->package : $stew;
-
-    delete $self->{snapshot}->{$package};
+    delete $self->{snapshot}->{$name};
     $self->store;
 
     return $self;

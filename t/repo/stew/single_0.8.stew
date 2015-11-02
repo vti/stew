@@ -1,0 +1,17 @@
+$name    = "single";
+$version = "0.9";
+$package = "$name-$version";
+$file    = "$package.tar.gz";
+
+prepare {
+    "tar xzf $file"
+};
+
+build {
+};
+
+install {
+    "cd $package",
+    "install -d $ENV{DESTDIR}/$ENV{PREFIX}/",
+    "install -m644 foo $ENV{DESTDIR}/$ENV{PREFIX}/foo"
+};

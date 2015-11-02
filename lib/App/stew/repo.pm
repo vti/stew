@@ -4,9 +4,10 @@ use strict;
 use warnings;
 
 use HTTP::Tiny;
-use File::Basename ();
+use File::Basename qw(dirname basename);
 use File::Path ();
-use App::stew::util qw(debug _copy);
+use Carp qw(croak);
+use App::stew::util qw(error debug _copy _mkpath);
 
 sub new {
     my $class = shift;
@@ -15,57 +16,127 @@ sub new {
     my $self = {};
     bless $self, $class;
 
-    $self->{path} = $params{path};
+    $self->{path} = $params{path} or croak 'path required';
     $self->{path} .= '/' unless $self->{path} =~ m{/$};
+
+    $self->{mirror_path} = $params{mirror_path} or croak 'mirror_path required';
+    $self->{mirror_path} .= '/' unless $self->{mirror_path} =~ m{/$};
+
+    $self->{os}   = $params{os}   or croak 'os required';
+    $self->{arch} = $params{arch} or croak 'arch required';
+
+    $self->{ua} = $params{ua};
 
     return $self;
 }
 
 sub mirror_stew {
     my $self = shift;
-    my ($name, $to) = @_;
+    my ($name) = @_;
 
-    my $full_name = $self->{path} . File::Spec->catfile('stew', $name . '.stew');
+    my $full_name =
+      $self->{path} . File::Spec->catfile('stew', $name . '.stew');
 
-    return $self->mirror_file($full_name, $to);
+    return $self->mirror_file($full_name, File::Spec->catfile($self->{mirror_path}, 'stew'));
 }
 
 sub mirror_src {
     my $self = shift;
-    my ($os, $arch, $filename, $to) = @_;
+    my ($filename) = @_;
 
     my $full_name = $self->{path} . File::Spec->catfile('src', $filename);
 
-    return $self->mirror_file($full_name, $to);
+    return $self->mirror_file($full_name, File::Spec->catfile($self->{mirror_path}, 'src'));
+}
+
+sub mirror_dist_dest {
+    my $self = shift;
+    my ($name, $version) = @_;
+
+    my $os   = $self->{os};
+    my $arch = $self->{arch};
+
+    return File::Spec->catfile($self->{mirror_path}, 'dist', $os, $arch, "${name}_${version}_$os-$arch.tar.gz");
 }
 
 sub mirror_dist {
     my $self = shift;
-    my ($os, $arch, $name, $to) = @_;
+    my ($name, $version) = @_;
 
-    my $full_name = $self->{path} . File::Spec->catfile('dist', $os, $arch, $name . '-dist.tar.gz');
+    croak 'name required'     unless $name;
+    croak 'version required ' unless $version;
 
-    return $self->mirror_file($full_name, $to);
+    my $os   = $self->{os};
+    my $arch = $self->{arch};
+
+    my $full_name = $self->{path}
+      . File::Spec->catfile('dist', $os, $arch, "${name}_${version}_$os-$arch.tar.gz");
+
+    return $self->mirror_file($full_name, File::Spec->catfile($self->{mirror_path}, 'dist', $os, $arch));
+}
+
+sub mirror_index {
+    my $self = shift;
+
+    my @index;
+
+    if ($self->{path} =~ m/^http/) {
+        my $ua = $self->{ua} || HTTP::Tiny->new;
+
+        for my $type (qw(stew src)) {
+            my $response = $ua->get("$self->{path}$type");
+
+            if ($response->{success}) {
+                my $content = $response->{content};
+
+                while ($content =~ m#<a href="(.*?\.(?:stew|tar\.gz))">.*?</a>#g) {
+                    push @index, "$type/$1";
+                }
+            }
+        }
+    }
+    else {
+        for my $type (qw(stew src)) {
+            opendir my $dh, "$self->{path}/$type" or error "Can't open directory '$self->{path}/$type': $!";
+            push @index,
+              map { "$type/$_" }
+              grep { !/^\./ && -f "$self->{path}/$type/$_" } readdir($dh);
+            closedir $dh;
+        }
+    }
+
+    my $to = File::Spec->catfile($self->{mirror_path}, 'index');
+
+    _mkpath dirname $to;
+
+    open my $fh, '>', $to or die "Can't create file '$to': $!";
+    print $fh "$_\n" for sort @index;
+    close $fh;
+
+    return $to;
 }
 
 sub mirror_file {
     my $self = shift;
-    my ($in, $out) = @_;
+    my ($in, $to_dir) = @_;
 
-    debug("Mirroring '$in' to '$out'");
+    _mkpath($to_dir);
 
-    File::Path::mkpath(File::Basename::dirname($out));
+    debug("Mirroring '$in' to '$to_dir'");
+
+    my $to = File::Spec->catfile($to_dir, basename $in);
 
     if ($in =~ m/^http/) {
-        HTTP::Tiny->new->mirror($in, $out);
+        my $ua = $self->{ua} || HTTP::Tiny->new;
+        $ua->mirror($in, $to);
     }
     else {
-        return 0 unless -f $in;
+        error "File '$in' does not exist" unless -f $in;
 
-        _copy($in, $out);
+        _copy($in, $to);
     }
 
-    return 1;
+    return $to;
 }
 
 1;

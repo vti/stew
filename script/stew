@@ -13,13 +13,13 @@ my $command = shift @ARGV;
 if (!$command) {
 }
 elsif ($command eq 'install') {
-    App::stew::cmd::install->new(argv => \@ARGV)->run;
+    App::stew::cmd::install->new()->run(@ARGV);
 }
 elsif ($command eq 'list-installed') {
-    App::stew::cmd::list_installed->new(argv => \@ARGV)->run;
+    App::stew::cmd::list_installed->new()->run(@ARGV);
 }
 elsif ($command eq 'uninstall') {
-    App::stew::cmd::uninstall->new(argv => \@ARGV)->run;
+    App::stew::cmd::uninstall->new()->run(@ARGV);
 }
 else {
     error qq{Unknown command '$command'};

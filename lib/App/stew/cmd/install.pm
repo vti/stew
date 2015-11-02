@@ -8,9 +8,10 @@ use Cwd qw(cwd abs_path);
 use File::Path qw(mkpath);
 use File::Spec;
 use App::stew::repo;
-use App::stew::cache;
 use App::stew::builder;
 use App::stew::snapshot;
+use App::stew::index;
+use App::stew::tree;
 use App::stew::env;
 use App::stew::util qw(info debug error);
 
@@ -21,13 +22,12 @@ sub new {
     my $self = {};
     bless $self, $class;
 
-    $self->{argv} = $params{argv};
-
     return $self;
 }
 
 sub run {
     my $self = shift;
+    my (@argv) = @_;
 
     my $opt_base;
     my $opt_prefix = 'local';
@@ -38,7 +38,7 @@ sub run {
     my $opt_dry_run;
     my $opt_verbose;
     GetOptionsFromArray(
-        $self->{argv},
+        \@argv,
         "base=s"   => \$opt_base,
         "prefix=s" => \$opt_prefix,
         "repo=s"   => \$opt_repo,
@@ -57,41 +57,32 @@ sub run {
     error("--base is required") unless $opt_base;
     error("--repo is required") unless $opt_repo;
 
-    my (@packages) = @ARGV;
-
     my $root_dir  = abs_path(cwd());
     my $build_dir = abs_path($opt_build);
     mkpath($build_dir);
-
-    my $repo = App::stew::repo->new(path => $opt_repo);
-    my $cache = App::stew::cache->new(
-        path => $build_dir,
-        repo => $repo,
-        os   => $opt_os,
-        arch => $opt_arch
-    );
-    my $snapshot = App::stew::snapshot->new(base => $opt_base);
-    $snapshot->load;
-    my $builder = App::stew::builder->new(
-        root_dir  => $root_dir,
-        build_dir => $build_dir,
-        cache     => $cache,
-        snapshot  => $snapshot
-    );
 
     $ENV{STEW_LOG_LEVEL} = $opt_verbose ? 1 : 0;
     $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
     unlink $ENV{STEW_LOG_FILE};
 
-    info "Updating local repository...";
+    my $repo = App::stew::repo->new(
+        path        => $opt_repo,
+        mirror_path => "$build_dir/.cache",
+        os          => $opt_os,
+        arch        => $opt_arch
+    );
 
-    my @stew_pkgs;
-    foreach my $package (@packages) {
-        push @stew_pkgs, $cache->sync_stew($package);
-    }
+    my $index = App::stew::index->new(repo => $repo);
 
-    unless (@stew_pkgs) {
-        error "No packages were found";
+    my $snapshot = App::stew::snapshot->new(base => $opt_base);
+    $snapshot->load;
+
+    my @trees;
+    foreach my $package (@argv) {
+        my $tree = App::stew::tree->new(repo => $repo, index => $index);
+        my $dump = $tree->build($package);
+
+        push @trees, $dump;
     }
 
     $ENV{STEW_OS}   = $opt_os;
@@ -100,8 +91,15 @@ sub run {
 
     App::stew::env->setup;
 
-    foreach my $stew_pkg (@stew_pkgs) {
-        $builder->build($stew_pkg);
+    my $builder = App::stew::builder->new(
+        root_dir  => $root_dir,
+        build_dir => $build_dir,
+        repo      => $repo,
+        snapshot  => $snapshot
+    );
+
+    foreach my $tree (@trees) {
+        $builder->build($tree);
     }
 
     info "Done";

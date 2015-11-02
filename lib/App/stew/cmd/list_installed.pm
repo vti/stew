@@ -14,16 +14,15 @@ sub new {
     my $self = {};
     bless $self, $class;
 
-    $self->{argv} = $params{argv};
-
     return $self;
 }
 
 sub run {
     my $self = shift;
+    my (@argv) = @_;
 
     my $opt_base;
-    GetOptionsFromArray($self->{argv}, "base=s" => \$opt_base)
+    GetOptionsFromArray(\@argv, "base=s" => \$opt_base)
       or die "error";
 
     error("--base is required") unless $opt_base;
@@ -31,7 +30,7 @@ sub run {
     my $snapshot = App::stew::snapshot->new(base => $opt_base)->load;
 
     foreach my $key (sort keys %$snapshot) {
-        print "$key\n";
+        print "$key $snapshot->{$key}->{version}\n";
     }
 }
 

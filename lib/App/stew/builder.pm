@@ -19,17 +19,21 @@ sub new {
 
     $self->{root_dir}  = $params{root_dir};
     $self->{build_dir} = $params{build_dir};
-    $self->{cache}     = $params{cache};
+    $self->{repo}      = $params{repo};
     $self->{snapshot}  = $params{snapshot};
+
+    $self->{from_source} = $params{from_source};
 
     return $self;
 }
 
 sub build {
     my $self = shift;
-    my ($stew) = @_;
+    my ($stew_tree) = @_;
 
-    if ($self->{snapshot}->is_installed($stew)) {
+    my $stew = $stew_tree->{stew};
+
+    if ($self->{snapshot}->is_up_to_date($stew->name, $stew->version)) {
         info sprintf "'%s' is up to date", $stew->package;
         return;
     }
@@ -49,11 +53,23 @@ sub build {
         _chdir($work_dir);
 
         info sprintf "Resolving dependencies...", $stew->package;
-        $self->_resolve_dependencies($stew);
+        $self->_resolve_dependencies($stew, $stew_tree);
 
-        my $dist_path = $self->{cache}->get_dist_filepath($stew);
+        my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
 
-        $self->_build_from_source($stew) unless -f $dist_path;
+        eval { $self->{repo}->mirror_dist($stew->name, $stew->version) };
+
+        if ($self->{from_source} || !-f $dist_path) {
+            my $dist_archive = basename $dist_path;
+            my ($dist_name) = $dist_archive =~ m/^(.*)\.tar\.gz$/;
+
+            $self->_build_from_source($stew, $dist_name);
+
+            info sprintf "Caching '%s' as '$dist_archive'...", $stew->package;
+            cmd("tar czhf $dist_archive $dist_name");
+
+            _copy $dist_archive, $dist_path;
+        }
 
         $tree = $self->_install_from_binary($stew, $dist_path);
 
@@ -67,7 +83,7 @@ sub build {
     };
 
     info sprintf "Done installing '%s'", $stew->package;
-    $self->{snapshot}->mark_installed($stew, $tree);
+    $self->{snapshot}->mark_installed($stew->name, $stew->version, $tree);
 
     return $self;
 }
@@ -85,18 +101,20 @@ sub _install_from_binary {
 
     _copy($dist_path, "$basename");
     cmd("tar xzf $basename");
-    _chdir($stew->package . '-dist');
+
+    my ($dist_name) = $basename =~ m/^(.*)\.tar\.gz$/;
+    _chdir($dist_name);
 
     my $local_prefix = $ENV{PREFIX};
     $local_prefix =~ s{^/+}{};
     cmd("cp --remove-destination -ra $local_prefix/* $ENV{PREFIX}/");
 
-    return _tree(".");
+    return _tree(".", ".");
 }
 
 sub _build_from_source {
     my $self = shift;
-    my ($stew) = @_;
+    my ($stew, $dist_name) = @_;
 
     info sprintf "Preparing '%s'...", $stew->package;
     $self->_prepare($stew);
@@ -109,18 +127,11 @@ sub _build_from_source {
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
     _chdir($work_dir);
 
-    my $dist_name = sprintf '%s-dist', $stew->package;
     _mkpath $dist_name;
     $ENV{DESTDIR} = abs_path($dist_name);
 
     info sprintf "Installing '%s'...", $stew->package;
     $self->_install($stew);
-
-    my $dist_archive = "$dist_name.tar.gz";
-    cmd("tar czhf $dist_archive $dist_name");
-
-    info sprintf "Caching '%s' as '$dist_archive'...", $stew->package;
-    $self->{cache}->cache_dist("$dist_archive");
 
     return $self;
 }
@@ -133,7 +144,7 @@ sub _prepare {
     _mkpath $work_dir;
     _chdir($work_dir);
 
-    my $src_file = $self->{cache}->get_src_filepath($stew);
+    my $src_file = $self->{repo}->mirror_src($stew->file);
 
     _copy($src_file, $work_dir)
       or error("Copy '$src_file' to '$work_dir' failed: $!");
@@ -166,18 +177,17 @@ sub _install {
 
 sub _resolve_dependencies {
     my $self = shift;
-    my ($stew) = @_;
+    my ($stew, $tree) = @_;
 
     my $build_dir = $self->{build_dir};
     my $work_dir = File::Spec->catfile($build_dir, $stew->package);
 
-    my @makedepends = $stew->makedepends;
+    my @makedepends = @{$tree->{make_dependencies} || []};
     if (@makedepends) {
-        info "Found make dependencies: @makedepends";
+        info "Found make dependencies: " . join(', ', map { $_->{stew}->package } @makedepends);
     }
-    foreach my $makedepends (@makedepends) {
-        my $stew_file = $self->{cache}->get_stew_filepath($makedepends);
-        my $stew      = App::stew::file->parse($stew_file);
+    foreach my $tree (@makedepends) {
+        my $stew = $tree->{stew};
 
         _chdir($self->{root_dir});
 
@@ -193,17 +203,16 @@ sub _resolve_dependencies {
         }
     }
 
-    my @depends = $stew->depends;
+    my @depends = @{$tree->{dependencies} || []};
     if (@depends) {
-        info "Found dependencies: @depends";
+        info "Found dependencies: " . join(', ', map { $_->{stew}->package } @depends);
     }
-    foreach my $depends (@depends) {
-        my $stew_file = $self->{cache}->get_stew_filepath($depends);
-        my $stew      = App::stew::file->parse($stew_file);
+    foreach my $tree (@depends) {
+        my $stew = $tree->{stew};
 
         _chdir($self->{root_dir});
 
-        $self->build($stew);
+        $self->build($tree);
 
         _chdir($self->{root_dir});
     }

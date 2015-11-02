@@ -10,6 +10,7 @@ our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _c
 use File::Find qw(find);
 use Carp qw(croak);
 use File::Copy qw(copy);
+use File::Basename qw(dirname);
 use File::Path qw(mkpath rmtree);
 
 sub slurp_file {
