@@ -23,6 +23,7 @@ sub new {
     $self->{snapshot}  = $params{snapshot};
 
     $self->{from_source} = $params{from_source};
+    $self->{reinstall}   = $params{reinstall};
 
     return $self;
 }
@@ -33,7 +34,7 @@ sub build {
 
     my $stew = $stew_tree->{stew};
 
-    if ($self->{snapshot}->is_up_to_date($stew->name, $stew->version)) {
+    if (!$self->{reinstall} && $self->{snapshot}->is_up_to_date($stew->name, $stew->version)) {
         info sprintf "'%s' is up to date", $stew->package;
         return;
     }

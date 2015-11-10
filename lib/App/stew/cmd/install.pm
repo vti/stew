@@ -38,6 +38,7 @@ sub run {
     my $opt_dry_run;
     my $opt_verbose;
     my $opt_from_source;
+    my $opt_reinstall;
     GetOptionsFromArray(
         \@argv,
         "base=s"      => \$opt_base,
@@ -49,6 +50,7 @@ sub run {
         "dry-run"     => \$opt_dry_run,
         "verbose"     => \$opt_verbose,
         "from-source" => \$opt_from_source,
+        "reinstall"   => \$opt_reinstall,
     ) or die "error";
 
     chomp($opt_os //= `uname -s`);
@@ -98,7 +100,8 @@ sub run {
         build_dir   => $build_dir,
         repo        => $repo,
         snapshot    => $snapshot,
-        from_source => $opt_from_source
+        from_source => $opt_from_source,
+        reinstall   => $opt_reinstall,
     );
 
     foreach my $tree (@trees) {
