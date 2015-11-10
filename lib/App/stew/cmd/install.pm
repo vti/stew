@@ -37,16 +37,18 @@ sub run {
     my $opt_build = 'build';
     my $opt_dry_run;
     my $opt_verbose;
+    my $opt_from_source;
     GetOptionsFromArray(
         \@argv,
-        "base=s"   => \$opt_base,
-        "prefix=s" => \$opt_prefix,
-        "repo=s"   => \$opt_repo,
-        "os=s"     => \$opt_os,
-        "arch=s"   => \$opt_arch,
-        "build=s"  => \$opt_build,
-        "dry-run"  => \$opt_dry_run,
-        "verbose"  => \$opt_verbose,
+        "base=s"      => \$opt_base,
+        "prefix=s"    => \$opt_prefix,
+        "repo=s"      => \$opt_repo,
+        "os=s"        => \$opt_os,
+        "arch=s"      => \$opt_arch,
+        "build=s"     => \$opt_build,
+        "dry-run"     => \$opt_dry_run,
+        "verbose"     => \$opt_verbose,
+        "from-source" => \$opt_from_source,
     ) or die "error";
 
     chomp($opt_os //= `uname -s`);
@@ -92,10 +94,11 @@ sub run {
     App::stew::env->setup;
 
     my $builder = App::stew::builder->new(
-        root_dir  => $root_dir,
-        build_dir => $build_dir,
-        repo      => $repo,
-        snapshot  => $snapshot
+        root_dir    => $root_dir,
+        build_dir   => $build_dir,
+        repo        => $repo,
+        snapshot    => $snapshot,
+        from_source => $opt_from_source
     );
 
     foreach my $tree (@trees) {
