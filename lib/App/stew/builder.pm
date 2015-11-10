@@ -30,11 +30,14 @@ sub new {
 
 sub build {
     my $self = shift;
-    my ($stew_tree) = @_;
+    my ($stew_tree, $mode) = @_;
 
     my $stew = $stew_tree->{stew};
 
-    if (!$self->{reinstall} && $self->{snapshot}->is_up_to_date($stew->name, $stew->version)) {
+    my $reinstall   = !$mode && $self->{reinstall};
+    my $from_source = !$mode && $self->{from_source};
+
+    if (!$reinstall && $self->{snapshot}->is_up_to_date($stew->name, $stew->version)) {
         info sprintf "'%s' is up to date", $stew->package;
         return;
     }
@@ -60,7 +63,7 @@ sub build {
 
         eval { $self->{repo}->mirror_dist($stew->name, $stew->version) };
 
-        if ($self->{from_source} || !-f $dist_path) {
+        if ($from_source || !-f $dist_path) {
             my $dist_archive = basename $dist_path;
             my ($dist_name) = $dist_archive =~ m/^(.*)\.tar\.gz$/;
 
@@ -213,7 +216,7 @@ sub _resolve_dependencies {
 
         _chdir($self->{root_dir});
 
-        $self->build($tree);
+        $self->build($tree, 'dep');
 
         _chdir($self->{root_dir});
     }
