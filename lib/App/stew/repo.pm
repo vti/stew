@@ -126,6 +126,11 @@ sub mirror_file {
 
     my $to = File::Spec->catfile($to_dir, basename $in);
 
+    if (-e $to) {
+        debug("File '$to' exists. Skipping");
+        return $to;
+    }
+
     if ($in =~ m/^http/) {
         my $ua = $self->{ua} || HTTP::Tiny->new;
         $ua->mirror($in, $to);
