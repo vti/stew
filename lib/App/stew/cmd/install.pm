@@ -61,6 +61,8 @@ sub run {
     error("--base is required") unless $opt_base;
     error("--repo is required") unless $opt_repo;
 
+    $opt_base = abs_path($opt_base);
+
     my $root_dir  = abs_path(cwd());
     my $build_dir = abs_path($opt_build);
     mkpath($build_dir);
