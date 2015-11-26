@@ -22,10 +22,12 @@ sub run {
     my (@argv) = @_;
 
     my $opt_base;
+    my $opt_prefix = 'local';
     my $opt_verbose;
     GetOptionsFromArray(
         \@argv,
         "base=s"   => \$opt_base,
+        "prefix=s"   => \$opt_prefix,
         "verbose"  => \$opt_verbose,
     ) or die "error";
 
@@ -45,7 +47,7 @@ sub run {
             my $info = $snapshot->get_package($package);
 
             foreach my $file (@{$info->{files}}) {
-                _unlink $file;
+                _unlink "$opt_base/$opt_prefix/$file";
             }
 
             $snapshot->mark_uninstalled($package);
