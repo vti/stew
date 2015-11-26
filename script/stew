@@ -5,6 +5,7 @@ use warnings;
 
 use App::stew::util qw(error);
 use App::stew::cmd::install;
+use App::stew::cmd::build;
 use App::stew::cmd::list_installed;
 use App::stew::cmd::uninstall;
 
@@ -14,6 +15,9 @@ if (!$command) {
 }
 elsif ($command eq 'install') {
     App::stew::cmd::install->new()->run(@ARGV);
+}
+elsif ($command eq 'build') {
+    App::stew::cmd::build->new()->run(@ARGV);
 }
 elsif ($command eq 'list-installed') {
     App::stew::cmd::list_installed->new()->run(@ARGV);

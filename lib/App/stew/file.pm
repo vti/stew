@@ -65,11 +65,11 @@ sub _sandbox {
     sub makedepends { \@makedepends }
 
     my \$phases = {};
-    sub download(&)    { \$phases->{download}    = shift }
-    sub prepare(&)     { \$phases->{prepare}     = shift }
-    sub build(&)       { \$phases->{build}       = shift }
-    sub install(&)     { \$phases->{install}     = shift }
-    sub postinstall(&) { \$phases->{postinstall} = shift }
+    sub download(&) { \$phases->{download}    = shift }
+    sub prepare(&)  { \$phases->{prepare}     = shift }
+    sub build(&)    { \$phases->{build}       = shift }
+    sub install(&)  { \$phases->{install}     = shift }
+    sub cleanup(&)  { \$phases->{cleanup} = shift }
 
     sub phase { \$phases->{\$_[1]} }
 

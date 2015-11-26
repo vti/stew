@@ -5,7 +5,7 @@ use warnings;
 
 use base 'Exporter';
 
-our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _copy _unlink _tree _tree_diff);
+our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _rmtree _copy _unlink _tree _tree_diff);
 
 use File::Find qw(find);
 use Carp qw(croak);
@@ -60,6 +60,13 @@ sub _mkpath {
     mkpath($dir);
 }
 
+sub _rmtree {
+    my ($dir) = @_;
+
+    debug(qq{Removing '$dir'});
+    rmtree($dir);
+}
+
 sub _copy {
     my ($from, $to) = @_;
 
@@ -109,8 +116,7 @@ sub _tree {
             my $name = $File::Find::name;
 
             if ($prefix) {
-                $name =~ s{^$prefix}{};
-                $name = "/$name" unless $name =~ m{^/};
+                $name =~ s{^$prefix/?}{};
             }
 
             push @tree, $name;
