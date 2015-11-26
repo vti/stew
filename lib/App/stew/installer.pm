@@ -65,6 +65,16 @@ sub build {
             my $builder = $self->_build_builder;
 
             $tree = $builder->build($stew_tree);
+
+            my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
+
+            my $dist_archive = basename $dist_path;
+            my ($dist_name) = $dist_archive =~ m/^(.*)\.tar\.gz$/;
+
+            _chdir $work_dir;
+            _chdir "$dist_name/$ENV{PREFIX}";
+
+            cmd("cp --remove-destination -ra * $ENV{PREFIX}/");
         }
         else {
             my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
