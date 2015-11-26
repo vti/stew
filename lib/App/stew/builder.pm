@@ -54,13 +54,15 @@ sub build {
         my $dist_archive = basename $dist_path;
         my ($dist_name) = $dist_archive =~ m/^(.*)\.tar\.gz$/;
 
-        $self->_build_from_source($stew, $dist_name);
+        $tree = $self->_build_from_source($stew, $dist_name);
 
-        cmd("tar czhf $dist_archive -C $dist_name/$ENV{PREFIX}/ .");
+        if (!$stew->is('cross-platform')) {
+            cmd("tar czhf $dist_archive -C $dist_name/$ENV{PREFIX}/ .");
 
-        info sprintf "Saving '%s' as '$dist_path'...", $stew->package;
-        _mkpath(dirname $dist_path);
-        _copy $dist_archive, $dist_path;
+            info sprintf "Saving '%s' as '$dist_path'...", $stew->package;
+            _mkpath(dirname $dist_path);
+            _copy $dist_archive, $dist_path;
+        }
 
         _chdir($cwd);
     } or do {
@@ -71,7 +73,7 @@ sub build {
         die $e;
     };
 
-    return $self;
+    return $tree;
 }
 
 sub _build_from_source {
@@ -101,7 +103,8 @@ sub _build_from_source {
     info sprintf "Cleaning '%s'...", $stew->package;
     $self->_run_stew_phase($stew, 'cleanup');
 
-    return $self;
+    _chdir "$ENV{DESTDIR}/$ENV{PREFIX}";
+    return _tree('.', '.');
 }
 
 sub _run_stew_phase {

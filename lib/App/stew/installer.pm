@@ -59,17 +59,26 @@ sub build {
         info sprintf "Resolving dependencies...", $stew->package;
         $self->_resolve_dependencies($stew, $stew_tree);
 
-        my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
+        if ($stew->is('cross-platform')) {
+            info sprintf 'Cross platform package';
 
-        eval { $self->{repo}->mirror_dist($stew->name, $stew->version) };
-
-        if ($from_source || !-f $dist_path) {
             my $builder = $self->_build_builder;
 
-            $builder->build($stew_tree);
+            $tree = $builder->build($stew_tree);
         }
+        else {
+            my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
 
-        $tree = $self->_install_from_binary($stew, $dist_path);
+            eval { $self->{repo}->mirror_dist($stew->name, $stew->version) };
+
+            if ($from_source || !-f $dist_path) {
+                my $builder = $self->_build_builder;
+
+                $tree = $builder->build($stew_tree);
+            }
+
+            $self->_install_from_binary($stew, $dist_path);
+        }
 
         _chdir($cwd);
     } or do {

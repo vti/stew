@@ -44,6 +44,7 @@ sub _sandbox {
     my \$file;
     my \@depends;
     my \@makedepends;
+    my \@flags;
 
     sub new {
         my \$class = shift;
@@ -63,6 +64,7 @@ sub _sandbox {
     sub file        { \$file }
     sub depends     { \@depends }
     sub makedepends { \@makedepends }
+    sub flags       { \@flags }
 
     my \$phases = {};
     sub download(&) { \$phases->{download}    = shift }
@@ -72,6 +74,13 @@ sub _sandbox {
     sub cleanup(&)  { \$phases->{cleanup} = shift }
 
     sub phase { \$phases->{\$_[1]} }
+
+    sub is {
+        my \$self = shift;
+        my (\$flag) = \@_;
+
+        return !!grep { \$_ eq \$flag } \$self->flags;
+    }
 
     sub run {
         my \$self = shift;
