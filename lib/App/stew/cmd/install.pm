@@ -8,7 +8,7 @@ use Cwd qw(cwd abs_path);
 use File::Path qw(mkpath);
 use File::Spec;
 use App::stew::repo;
-use App::stew::builder;
+use App::stew::installer;
 use App::stew::snapshot;
 use App::stew::index;
 use App::stew::tree;
@@ -98,7 +98,7 @@ sub run {
 
     App::stew::env->setup;
 
-    my $builder = App::stew::builder->new(
+    my $builder = App::stew::installer->new(
         root_dir    => $root_dir,
         build_dir   => $build_dir,
         repo        => $repo,

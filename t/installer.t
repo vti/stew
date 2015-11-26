@@ -9,7 +9,7 @@ use File::Copy qw(copy);
 use Cwd qw(abs_path);
 use App::stew::file;
 use App::stew::snapshot;
-use App::stew::builder;
+use App::stew::installer;
 use App::stew::repo;
 
 subtest 'installs from source' => sub {
@@ -104,7 +104,7 @@ sub _copy {
 sub _build_builder {
     my (%params) = @_;
 
-    App::stew::builder->new(
+    App::stew::installer->new(
         root_dir  => $params{root_dir},
         build_dir => $params{build_dir},
         snapshot  => App::stew::snapshot->new(base => $params{base_dir}),

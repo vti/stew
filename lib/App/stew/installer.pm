@@ -1,4 +1,4 @@
-package App::stew::builder;
+package App::stew::installer;
 
 use strict;
 use warnings;
