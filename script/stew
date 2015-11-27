@@ -8,6 +8,7 @@ use App::stew::cmd::install;
 use App::stew::cmd::build;
 use App::stew::cmd::list_installed;
 use App::stew::cmd::uninstall;
+use App::stew::cmd::exec;
 
 my $command = shift @ARGV;
 
@@ -24,6 +25,9 @@ elsif ($command eq 'list-installed') {
 }
 elsif ($command eq 'uninstall') {
     App::stew::cmd::uninstall->new()->run(@ARGV);
+}
+elsif ($command eq 'exec') {
+    App::stew::cmd::exec->new()->run(@ARGV);
 }
 else {
     error qq{Unknown command '$command'};
