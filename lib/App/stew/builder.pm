@@ -57,6 +57,7 @@ sub build {
         $tree = $self->_build_from_source($stew, $dist_name);
 
         if (!$stew->is('cross-platform')) {
+            _chdir($work_dir);
             cmd("tar czhf $dist_archive -C $dist_name/$ENV{PREFIX}/ .");
 
             info sprintf "Saving '%s' as '$dist_path'...", $stew->package;
