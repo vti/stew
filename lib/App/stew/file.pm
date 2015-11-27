@@ -42,6 +42,7 @@ sub _sandbox {
     my \$version;
     my \$package;
     my \$file;
+    my \$url;
     my \@depends;
     my \@makedepends;
     my \@flags;
@@ -62,6 +63,7 @@ sub _sandbox {
     sub version     { \$version }
     sub package     { \$package }
     sub file        { \$file }
+    sub url         { \$url }
     sub depends     { \@depends }
     sub makedepends { \@makedepends }
     sub flags       { \@flags }

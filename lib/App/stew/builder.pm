@@ -89,8 +89,15 @@ sub _build_from_source {
     _mkpath $work_dir;
     _chdir($work_dir);
 
-    my $src_file = $self->{repo}->mirror_src($stew->file);
-    _copy($src_file, $work_dir);
+    if ($stew->url) {
+        my $src_file = $self->{repo}->mirror_file($stew->url,
+            File::Spec->catfile($self->{repo}->{mirror_path}, 'src'));
+        _copy($src_file, $work_dir);
+    }
+    else {
+        my $src_file = $self->{repo}->mirror_src($stew->file);
+        _copy($src_file, $work_dir);
+    }
 
     info sprintf "Preparing '%s'...", $stew->package;
     $self->_run_stew_phase($stew, 'prepare');
