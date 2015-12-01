@@ -54,6 +54,7 @@ sub build {
         my $dist_archive = basename $dist_path;
         my ($dist_name) = $dist_archive =~ m/^(.*)\.tar\.gz$/;
 
+        _chdir($work_dir);
         $tree = $self->_build_from_source($stew, $dist_name);
 
         if (!$stew->is('cross-platform')) {
@@ -143,7 +144,7 @@ sub _resolve_dependencies {
         _chdir($self->{root_dir});
 
         info sprintf "Preparing make dependency '%s'", $stew->package;
-        $self->_prepare($stew);
+        $self->_run_stew_phase($stew, 'prepare');
 
         _chdir($self->{root_dir});
 
