@@ -98,6 +98,13 @@ sub _build_from_source {
     else {
         my $src_file = $self->{repo}->mirror_src($stew->file);
         _copy($src_file, $work_dir);
+
+        if (my @files = $stew->files) {
+            foreach my $file (@files) {
+                my $src_file = $self->{repo}->mirror_src($file);
+                _copy($src_file, $work_dir);
+            }
+        }
     }
 
     info sprintf "Preparing '%s'...", $stew->package;
