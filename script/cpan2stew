@@ -1,0 +1,156 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use File::Basename qw(basename);
+use CPAN::FindDependencies;
+
+my $details_file = '02packages.details.txt.gz';
+
+#`wget 'http://cpan.cpan.org/modules/$details_file' -O $details_file`;
+
+my %seen;
+
+foreach my $name (@ARGV) {
+    gen_tree($name);
+}
+
+sub gen_tree {
+    my ($name) = @_;
+
+    if ($seen{$name}) {
+        warn sprintf 'Skipping %s...', $name;
+        return;
+    }
+
+    print "Working on '$name'...\n";
+
+    my %modules;
+
+    my @dependencies = CPAN::FindDependencies::finddeps(
+        $name,
+        '02packages' => $details_file,
+        nowarnings   => 1
+    );
+
+    if (!@dependencies) {
+        warn "Can't find module '$name'";
+        return;
+    }
+
+    my %index;
+    foreach my $dep (@dependencies) {
+        $index{$dep->distribution} = $dep;
+    }
+
+    my $module = shift @dependencies;
+
+    my %tree;
+    $tree{$module->distribution} = [];
+    calc_deps(\%tree, $module, \@dependencies, 1);
+
+    foreach my $key (keys %tree) {
+        my @deps = map { $index{$_} } @{$tree{$key} || []};
+        gen_stew($index{$key}, @deps);
+    }
+}
+
+sub dist_to_pkg {
+    my ($dist) = @_;
+
+    my @parts = split /::/, $dist;
+
+    return 'lib' . join('-', map { lc } @parts) . '-perl';
+}
+
+sub gen_stew {
+    my ($module, @deps) = @_;
+
+    if ($seen{$module->name}) {
+        warn sprintf 'Skipping %s...', $module->name;
+        return;
+    }
+
+    $seen{$module->name}++;
+
+    my $pkg       = dist_to_pkg($module->name);
+    my ($version) = $module->distribution =~ m/-([0-9\._a-z]+)\.tar\.gz$/;
+
+    if (!$version) {
+        warn "Can't detect version from " . $module->distribution;
+    }
+
+    my $dist      = $module->distribution;
+    my $deps = join ', ', map { "'$_'" } map { dist_to_pkg($_->name) } @deps;
+    $deps = ', ' . $deps if $deps;
+
+    my $file = basename($dist);
+    my ($name) = $file =~ m/^(.*)\.tar.gz$/;
+
+    my $stew_file = "${pkg}_${version}.stew";
+
+    print "Generating $stew_file ...";
+
+    open my $fh, '>', $stew_file or die $!;
+    print $fh <<"EOF";
+\$name    = "$pkg";
+\$version = "$version";
+\$package = "$pkg-$version";
+\@depends = ('perl'$deps);
+\$url     = "http://cpan.cpan.org/stacks/6.4/authors/id/$dist";
+\$file    = "$file";
+
+prepare {
+    "tar xzf '\$file'"
+};
+
+build {
+    "cd $name",
+    "unset PERL5LIB PERL_MM_OPT PERL_MB_OPT PERL_LOCAL_LIB_ROOT",
+    "export PERL_MM_USE_DEFAULT=1 MODULEBUILDRC=/dev/null",
+    (-f '$name/Makefile.PL' ? 'perl Makefile.PL' : 'perl Build.PL'),
+    (-f '$name/Makefile.PL' ? 'make' : './Build')
+};
+
+install {
+    "cd $name",
+    "unset PERL5LIB PERL_MM_OPT PERL_MB_OPT PERL_LOCAL_LIB_ROOT",
+    (
+        -f '$name/Makefile.PL'
+        ? "make install INSTALLDIRS=vendor DESTDIR=\$ENV{DESTDIR}"
+        : "./Build install installdirs=vendor destdir=\$ENV{DESTDIR}"
+    )
+};
+
+EOF
+
+    close $fh;
+
+    print "ok\n";
+}
+
+sub calc_deps {
+    my ($tree, $module, $dependencies, $depth) = @_;
+
+    my $prev;
+    while (my $dep = shift @$dependencies) {
+        next if $dep->distribution =~ m/perl-.*?\.tar\.gz$/;
+
+        $tree->{$dep->distribution} ||= [];
+
+        if ($dep->depth < $depth) {
+            unshift @$dependencies, $dep;
+            return;
+        }
+        elsif ($dep->depth == $depth) {
+            push @{$tree->{$module->distribution}}, $dep->distribution;
+        }
+        else {
+            unshift @$dependencies, $dep;
+            calc_deps($tree, $prev, $dependencies, $dep->depth);
+        }
+
+        $prev = $dep;
+    }
+}
