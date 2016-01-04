@@ -57,7 +57,7 @@ sub gen_tree {
 sub dist_to_pkg {
     my ($dist) = @_;
 
-    my @parts = split /::/, $dist;
+    my @parts = map { s/_/-/g; $_ } split /::/, $dist;
 
     return 'lib' . join('-', map { lc } @parts) . '-perl';
 }

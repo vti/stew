@@ -77,6 +77,9 @@ sub build {
 
             cmd("cp --remove-destination -ra * $ENV{PREFIX}/");
         }
+        elsif ($stew->is('meta')) {
+            info sprintf 'Meta package';
+        }
         else {
             my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
 
