@@ -8,8 +8,6 @@ use CPAN::FindDependencies;
 
 my $details_file = '02packages.details.txt.gz';
 
-#`wget 'http://cpan.cpan.org/modules/$details_file' -O $details_file`;
-
 my %seen;
 
 foreach my $name (@ARGV) {
@@ -75,7 +73,7 @@ sub gen_stew {
     $seen{$module->name}++;
 
     my $pkg       = dist_to_pkg($module->name);
-    my ($version) = $module->distribution =~ m/-([0-9\._a-z]+)\.tar\.gz$/;
+    my ($version) = $module->distribution =~ m/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$/;
 
     if (!$version) {
         warn "Can't detect version from " . $module->distribution;
@@ -86,7 +84,7 @@ sub gen_stew {
     $deps = ', ' . $deps if $deps;
 
     my $file = basename($dist);
-    my ($name) = $file =~ m/^(.*)\.tar.gz$/;
+    my ($name) = $file =~ m/^(.*)(?:\.tar.gz|\.tgz)$/;
 
     my $stew_file = "${pkg}_${version}.stew";
 
