@@ -13,7 +13,7 @@ use App::stew::snapshot;
 use App::stew::index;
 use App::stew::tree;
 use App::stew::env;
-use App::stew::util qw(info debug error);
+use App::stew::util qw(info debug error slurp_file);
 
 sub new {
     my $class = shift;
@@ -83,6 +83,12 @@ sub run {
 
     my $snapshot = App::stew::snapshot->new(base => $opt_base);
     $snapshot->load;
+
+    if (@argv == 1 && $argv[0] eq '.') {
+        die 'stewfile not found' unless -f 'stewfile';
+
+        @argv = grep { $_ && !/^#/ } split /\n+/, slurp_file('stewfile');
+    }
 
     my @trees;
     foreach my $package (@argv) {
