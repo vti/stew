@@ -46,10 +46,8 @@ sub run {
         "verbose"     => \$opt_verbose,
     ) or die "error";
 
-    chomp($opt_os //= `uname -s`);
-    $opt_os = lc $opt_os;
-    chomp($opt_arch //= `uname -m`);
-    $opt_arch = lc $opt_arch;
+    $opt_os   //= App::stew::env->detect_os;
+    $opt_arch //= App::stew::env->detect_arch;
 
     error("--base is required") unless $opt_base;
     error("--repo is required") unless $opt_repo;
