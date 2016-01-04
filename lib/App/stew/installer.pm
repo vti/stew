@@ -23,8 +23,9 @@ sub new {
     $self->{repo}      = $params{repo};
     $self->{snapshot}  = $params{snapshot};
 
-    $self->{from_source} = $params{from_source};
-    $self->{reinstall}   = $params{reinstall};
+    $self->{from_source}           = $params{from_source};
+    $self->{from_source_recursive} = $params{from_source_recursive};
+    $self->{reinstall}             = $params{reinstall};
 
     return $self;
 }
@@ -36,7 +37,7 @@ sub build {
     my $stew = $stew_tree->{stew};
 
     my $reinstall   = !$mode && $self->{reinstall};
-    my $from_source = !$mode && $self->{from_source};
+    my $from_source = $self->{from_source_recursive} || (!$mode && $self->{from_source});
 
     if (!$reinstall && $self->{snapshot}->is_up_to_date($stew->name, $stew->version)) {
         info sprintf "'%s' is up to date", $stew->package;

@@ -38,19 +38,21 @@ sub run {
     my $opt_dry_run;
     my $opt_verbose;
     my $opt_from_source;
+    my $opt_from_source_recursive;
     my $opt_reinstall;
     GetOptionsFromArray(
         \@argv,
-        "base=s"      => \$opt_base,
-        "prefix=s"    => \$opt_prefix,
-        "repo=s"      => \$opt_repo,
-        "os=s"        => \$opt_os,
-        "arch=s"      => \$opt_arch,
-        "build=s"     => \$opt_build,
-        "dry-run"     => \$opt_dry_run,
-        "verbose"     => \$opt_verbose,
-        "from-source" => \$opt_from_source,
-        "reinstall"   => \$opt_reinstall,
+        "base=s"                => \$opt_base,
+        "prefix=s"              => \$opt_prefix,
+        "repo=s"                => \$opt_repo,
+        "os=s"                  => \$opt_os,
+        "arch=s"                => \$opt_arch,
+        "build=s"               => \$opt_build,
+        "dry-run"               => \$opt_dry_run,
+        "verbose"               => \$opt_verbose,
+        "from-source"           => \$opt_from_source,
+        "from-source-recursive" => \$opt_from_source_recursive,
+        "reinstall"             => \$opt_reinstall,
     ) or die "error";
 
     $opt_os   //= App::stew::env->detect_os;
@@ -97,12 +99,13 @@ sub run {
     App::stew::env->setup;
 
     my $builder = App::stew::installer->new(
-        root_dir    => $root_dir,
-        build_dir   => $build_dir,
-        repo        => $repo,
-        snapshot    => $snapshot,
-        from_source => $opt_from_source,
-        reinstall   => $opt_reinstall,
+        root_dir              => $root_dir,
+        build_dir             => $build_dir,
+        repo                  => $repo,
+        snapshot              => $snapshot,
+        from_source           => $opt_from_source,
+        from_source_recursive => $opt_from_source_recursive,
+        reinstall             => $opt_reinstall,
     );
 
     foreach my $tree (@trees) {
