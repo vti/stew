@@ -13,7 +13,7 @@ use App::stew::installer;
 use App::stew::repo;
 
 subtest 'installs from source' => sub {
-    my $root_dir = tempdir(CLEANUP => 1);
+    my $root_dir  = tempdir(CLEANUP => 1);
     my $build_dir = "$root_dir/build";
     my $base_dir  = "$root_dir/opt";
 
@@ -25,9 +25,9 @@ subtest 'installs from source' => sub {
 
     my $builder = _build_builder(
         from_source => 1,
-        base_dir  => $base_dir,
-        root_dir  => $root_dir,
-        build_dir => $build_dir
+        base_dir    => $base_dir,
+        root_dir    => $root_dir,
+        build_dir   => $build_dir
     );
 
     my $stew = App::stew::file->parse("t/repo/stew/single_1.0.stew");
@@ -39,7 +39,7 @@ subtest 'installs from source' => sub {
 };
 
 subtest 'caches binary' => sub {
-    my $root_dir = tempdir(CLEANUP => 1);
+    my $root_dir  = tempdir(CLEANUP => 1);
     my $build_dir = "$root_dir/build";
     my $base_dir  = "$root_dir/opt";
 
@@ -64,7 +64,7 @@ subtest 'caches binary' => sub {
 };
 
 subtest 'installs from dist when available' => sub {
-    my $root_dir = tempdir(CLEANUP => 1);
+    my $root_dir  = tempdir(CLEANUP => 1);
     my $build_dir = "$root_dir/build";
     my $base_dir  = "$root_dir/opt";
 
@@ -75,6 +75,7 @@ subtest 'installs from dist when available' => sub {
     $ENV{PREFIX}        = "$base_dir/local";
 
     my $builder = _build_builder(
+        from_source => 1,
         base_dir    => $base_dir,
         root_dir    => $root_dir,
         build_dir   => $build_dir
@@ -85,6 +86,12 @@ subtest 'installs from dist when available' => sub {
     $builder->build({stew => $stew});
 
     unlink("$build_dir/.cache/src/single-1.0.tar.gz");
+
+    $builder = _build_builder(
+        base_dir  => $base_dir,
+        root_dir  => $root_dir,
+        build_dir => $build_dir
+    );
 
     $builder->build({stew => $stew});
 
