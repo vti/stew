@@ -85,10 +85,6 @@ sub build {
 
             eval { $self->{repo}->mirror_dist($stew->name, $stew->version) };
 
-            my $dist_path_basename = basename $dist_path;
-            error("Distribution '$dist_path_basename' not available. Maybe build from source?")
-              if !$from_source && !-f $dist_path;
-
             if ($from_source || !-f $dist_path) {
                 my $builder = $self->_build_builder;
 
