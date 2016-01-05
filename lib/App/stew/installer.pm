@@ -106,6 +106,8 @@ sub build {
     info sprintf "Done installing '%s'", $stew->package;
     $self->{snapshot}->mark_installed($stew->name, $stew->version, $tree);
 
+    _rmtree $work_dir;
+
     return $self;
 }
 
