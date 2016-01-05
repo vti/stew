@@ -127,8 +127,9 @@ install {
 
 cleanup {
     "cd \$ENV{DESTDIR}",
-    "find -name 'perllocal.pod' -exec rm -f {} \\\\;",
-    "find -name '.packlist' -exec rm -f {} \\\\;",
+    "find . -name 'perllocal.pod' -exec rm -f {} \\\\;",
+    "find . -name '.packlist' -exec rm -f {} \\\\;",
+    "find . -type d -empty -delete",
 };
 EOF
 

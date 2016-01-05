@@ -11,6 +11,7 @@ use App::stew::env;
 
 subtest 'detects debian' => sub {
     my $root = tempdir(CLEANUP => 1);
+    $Linux::Distribution::release_files_directory = "$root/etc";
 
     mkpath("$root/etc");
     write_file("$root/etc/debian_version", <<'EOF');
@@ -19,11 +20,12 @@ EOF
 
     my $env = _build_env(root => $root, osname => 'linux');
 
-    is($env->detect_os, 'linux-debian-7');
+    is($env->detect_os, 'linux-debian-7.7');
 };
 
 subtest 'detects SuSE' => sub {
     my $root = tempdir(CLEANUP => 1);
+    $Linux::Distribution::release_files_directory = "$root/etc";
 
     mkpath("$root/etc");
     write_file("$root/etc/SuSE-release", <<'EOF');
@@ -39,6 +41,7 @@ EOF
 
 subtest 'detects CentOS' => sub {
     my $root = tempdir(CLEANUP => 1);
+    $Linux::Distribution::release_files_directory = "$root/etc";
 
     mkpath("$root/etc");
     write_file("$root/etc/redhat-release", <<'EOF');
@@ -47,11 +50,12 @@ EOF
 
     my $env = _build_env(root => $root, osname => 'linux');
 
-    is($env->detect_os, 'linux-centos-7');
+    is($env->detect_os, 'linux-centos-7.1');
 };
 
 subtest 'detects RedHat' => sub {
     my $root = tempdir(CLEANUP => 1);
+    $Linux::Distribution::release_files_directory = "$root/etc";
 
     mkpath("$root/etc");
     write_file("$root/etc/redhat-release", <<'EOF');
@@ -60,11 +64,12 @@ EOF
 
     my $env = _build_env(root => $root, osname => 'linux');
 
-    is($env->detect_os, 'linux-redhat-7');
+    is($env->detect_os, 'linux-redhat-7.1');
 };
 
 subtest 'when no dist name available add generic' => sub {
     my $root = tempdir(CLEANUP => 1);
+    $Linux::Distribution::release_files_directory = "$root/etc";
 
     my $env = _build_env(root => $root, osname => 'linux');
 
@@ -73,6 +78,7 @@ subtest 'when no dist name available add generic' => sub {
 
 subtest 'when no version available do not add anything' => sub {
     my $root = tempdir(CLEANUP => 1);
+    $Linux::Distribution::release_files_directory = "$root/etc";
 
     mkpath("$root/etc");
     write_file("$root/etc/debian_version", <<'EOF');

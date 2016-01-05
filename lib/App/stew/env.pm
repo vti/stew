@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Config;
+use Linux::Distribution;
 use App::stew::util qw(debug slurp_file);
 
 sub new {
@@ -35,42 +36,18 @@ sub detect_os {
     my $os = $self->_osname;
 
     if ($os eq 'linux') {
-        my $debian_version = $self->_root . 'etc/debian_version';
-        my $suse_version   = $self->_root . 'etc/SuSE-release';
-        my $redhat_version = $self->_root . 'etc/redhat-release';
+        my $dist_name = Linux::Distribution::distribution_name() // 'generic';
+        my $dist_version = eval { Linux::Distribution::distribution_version() };
 
-        my $dist_name = 'generic';
-        my $dist_ver  = '';
-
-        if (-f $debian_version) {
-            $dist_name = 'debian';
-
-            my $content = slurp_file $debian_version;
-            my ($ver) = $content =~ m/(\d+)/;
-            $dist_ver = $ver if $ver;
+        if ($dist_version && $dist_version =~ m/^(\d+(?:\.\d+)?)/) {
+            $dist_version = $1;
         }
-        elsif (-f $suse_version) {
-            $dist_name = 'suse';
-
-            my $content = slurp_file $suse_version;
-            my ($ver) = $content =~ m/VERSION\s*=\s*(\d+)/;
-            $dist_ver = $ver if $ver;
-        }
-        elsif (-f $redhat_version) {
-            my $content = slurp_file $redhat_version;
-            if ($content =~ m/centos/i) {
-                $dist_name = 'centos';
-            }
-            elsif ($content =~ m/red\s*hat/i) {
-                $dist_name = 'redhat';
-            }
-
-            my ($ver) = $content =~ m/release\s*(\d+)/;
-            $dist_ver = $ver if $ver;
+        else {
+            $dist_version = undef;
         }
 
         $os .= "-$dist_name";
-        $os .= "-$dist_ver" if $dist_ver;
+        $os .= "-$dist_version" if $dist_version;
     }
 
     return $os;
