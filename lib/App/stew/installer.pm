@@ -26,6 +26,7 @@ sub new {
     $self->{from_source}           = $params{from_source};
     $self->{from_source_recursive} = $params{from_source_recursive};
     $self->{reinstall}             = $params{reinstall};
+    $self->{keep_files}            = $params{keep_files};
 
     return $self;
 }
@@ -36,10 +37,13 @@ sub build {
 
     my $stew = $stew_tree->{stew};
 
-    my $reinstall   = !$mode && $self->{reinstall};
-    my $from_source = $self->{from_source_recursive} || (!$mode && $self->{from_source});
+    my $reinstall = !$mode && $self->{reinstall};
+    my $from_source =
+      $self->{from_source_recursive} || (!$mode && $self->{from_source});
 
-    if (!$reinstall && $self->{snapshot}->is_up_to_date($stew->name, $stew->version)) {
+    if (  !$reinstall
+        && $self->{snapshot}->is_up_to_date($stew->name, $stew->version))
+    {
         info sprintf "'%s' is up to date", $stew->package;
         return;
     }
@@ -54,7 +58,7 @@ sub build {
     _rmtree $work_dir;
     _mkpath($work_dir);
 
-    my $cwd = getcwd();
+    my $cwd  = getcwd();
     my $tree = [];
     eval {
         info sprintf "Resolving dependencies...", $stew->package;
@@ -67,7 +71,8 @@ sub build {
 
             $tree = $builder->build($stew_tree);
 
-            my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
+            my $dist_path =
+              $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
 
             my $dist_archive = basename $dist_path;
             my ($dist_name) = $dist_archive =~ m/^(.*)\.tar\.gz$/;
@@ -81,7 +86,8 @@ sub build {
             info sprintf 'Meta package';
         }
         else {
-            my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
+            my $dist_path =
+              $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
 
             eval { $self->{repo}->mirror_dist($stew->name, $stew->version) };
 
@@ -106,7 +112,7 @@ sub build {
     info sprintf "Done installing '%s'", $stew->package;
     $self->{snapshot}->mark_installed($stew->name, $stew->version, $tree);
 
-    _rmtree $work_dir;
+    _rmtree $work_dir unless $self->{keep_files};
 
     return $self;
 }
@@ -115,7 +121,8 @@ sub _install_from_binary {
     my $self = shift;
     my ($stew, $dist_path) = @_;
 
-    info sprintf "Installing '%s' from binaries '%s'...", $stew->package, $dist_path;
+    info sprintf "Installing '%s' from binaries '%s'...", $stew->package,
+      $dist_path;
 
     my $basename = basename $dist_path;
 
@@ -142,7 +149,8 @@ sub _resolve_dependencies {
 
     my @depends = @{$tree->{dependencies} || []};
     if (@depends) {
-        info "Found dependencies: " . join(', ', map { $_->{stew}->package } @depends);
+        info "Found dependencies: "
+          . join(', ', map { $_->{stew}->package } @depends);
     }
     foreach my $tree (@depends) {
         my $stew = $tree->{stew};

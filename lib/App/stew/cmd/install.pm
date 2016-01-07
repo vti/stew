@@ -40,6 +40,7 @@ sub run {
     my $opt_from_source;
     my $opt_from_source_recursive;
     my $opt_reinstall;
+    my $opt_keep_files;
     GetOptionsFromArray(
         \@argv,
         "base=s"                => \$opt_base,
@@ -53,6 +54,7 @@ sub run {
         "from-source"           => \$opt_from_source,
         "from-source-recursive" => \$opt_from_source_recursive,
         "reinstall"             => \$opt_reinstall,
+        "keep-files"            => \$opt_keep_files,
     ) or die "error";
 
     $opt_os   //= App::stew::env->detect_os;
@@ -112,6 +114,7 @@ sub run {
         from_source           => $opt_from_source,
         from_source_recursive => $opt_from_source_recursive,
         reinstall             => $opt_reinstall,
+        keep_files            => $opt_keep_files,
     );
 
     foreach my $tree (@trees) {
