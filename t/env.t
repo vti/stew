@@ -18,7 +18,7 @@ subtest 'detects debian' => sub {
 7.7
 EOF
 
-    my $env = _build_env(root => $root, osname => 'linux');
+    my $env = _build_env(osname => 'linux');
 
     is($env->detect_os, 'linux-debian-7.7');
 };
@@ -34,7 +34,7 @@ VERSION = 11
 PATCHLEVEL = 4
 EOF
 
-    my $env = _build_env(root => $root, osname => 'linux');
+    my $env = _build_env(osname => 'linux');
 
     is($env->detect_os, 'linux-suse-11');
 };
@@ -48,7 +48,7 @@ subtest 'detects CentOS' => sub {
 CentOS Linux release 7.1.1503 (Core) 
 EOF
 
-    my $env = _build_env(root => $root, osname => 'linux');
+    my $env = _build_env(osname => 'linux');
 
     is($env->detect_os, 'linux-centos-7.1');
 };
@@ -62,7 +62,7 @@ subtest 'detects RedHat' => sub {
 Red Hat Enterprise Linux Server release 7.1 (Maipo)
 EOF
 
-    my $env = _build_env(root => $root, osname => 'linux');
+    my $env = _build_env(osname => 'linux');
 
     is($env->detect_os, 'linux-redhat-7.1');
 };
@@ -71,7 +71,7 @@ subtest 'when no dist name available add generic' => sub {
     my $root = tempdir(CLEANUP => 1);
     $Linux::Distribution::release_files_directory = "$root/etc";
 
-    my $env = _build_env(root => $root, osname => 'linux');
+    my $env = _build_env(osname => 'linux');
 
     is($env->detect_os, 'linux-generic');
 };
@@ -84,9 +84,23 @@ subtest 'when no version available do not add anything' => sub {
     write_file("$root/etc/debian_version", <<'EOF');
 EOF
 
-    my $env = _build_env(root => $root, osname => 'linux');
+    my $env = _build_env(osname => 'linux');
 
     is($env->detect_os, 'linux-debian');
+};
+
+subtest 'detect mac os' => sub {
+    my $root = tempdir(CLEANUP => 1);
+
+    my $env = _build_env(osname => 'darwin', run_cmd => <<'EOF');
+ProductName:    Mac OS X
+ProductVersion: 10.3
+BuildVersion:   7A100
+EOF
+
+    is($env->detect_os, 'darwin-osx-10.3');
+
+    is_deeply [$env->mocked_call_args('_run_cmd')], [qw/sw_vers/];
 };
 
 done_testing;
@@ -97,8 +111,8 @@ sub _build_env {
     my $env = App::stew::env->new;
 
     $env = Test::MonkeyMock->new($env);
-    $env->mock(_root   => sub { "$params{root}/" });
-    $env->mock(_osname => sub { $params{osname} });
+    $env->mock(_osname  => sub { $params{osname} });
+    $env->mock(_run_cmd => sub { $params{run_cmd} });
 
     return $env;
 }

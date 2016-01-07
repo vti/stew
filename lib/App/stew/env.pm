@@ -49,6 +49,16 @@ sub detect_os {
         $os .= "-$dist_name";
         $os .= "-$dist_version" if $dist_version;
     }
+    elsif ($os eq 'darwin') {
+        my $cmd = 'sw_vers';
+
+        my $output = $self->_run_cmd('sw_vers');
+
+        my ($dist_version) = $output =~ m/ProductVersion:\s+(\d+\.\d+)/;
+
+        $os .= "-osx";
+        $os .= "-$dist_version" if $dist_version;
+    }
 
     return $os;
 }
@@ -65,7 +75,13 @@ sub detect_arch {
 }
 
 sub _osname { $^O }
-sub _root   { '/' }
+
+sub _run_cmd {
+    my $self = shift;
+    my ($cmd) = @_;
+
+    return `$cmd`;
+}
 
 sub _unshift_env {
     my ($var, $value) = @_;
