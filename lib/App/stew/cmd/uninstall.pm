@@ -4,8 +4,7 @@ use strict;
 use warnings;
 
 use Getopt::Long qw(GetOptionsFromArray);
-use App::stew::snapshot;
-use App::stew::util qw(info debug error _unlink);
+use App::stew::uninstaller;
 
 sub new {
     my $class = shift;
@@ -27,32 +26,16 @@ sub run {
     GetOptionsFromArray(
         \@argv,
         "base=s"   => \$opt_base,
-        "prefix=s"   => \$opt_prefix,
+        "prefix=s" => \$opt_prefix,
         "verbose"  => \$opt_verbose,
     ) or die "error";
 
     error("--base is required") unless $opt_base;
 
-    my (@packages) = @argv;
+    my $uninstaller =
+      App::stew::uninstaller->new(base => $opt_base, prefix => $opt_prefix);
 
-    my $snapshot = App::stew::snapshot->new(base => $opt_base);
-    $snapshot->load;
-
-    foreach my $package (@packages) {
-        if (!$snapshot->is_installed($package)) {
-            warn "$package not installed. Skipping";
-        }
-        else {
-            debug sprintf "Uninstalling '%s'...", $package;
-            my $info = $snapshot->get_package($package);
-
-            foreach my $file (@{$info->{files}}) {
-                _unlink "$opt_base/$opt_prefix/$file";
-            }
-
-            $snapshot->mark_uninstalled($package);
-        }
-    }
+    $uninstaller->uninstall(@argv);
 }
 
 1;

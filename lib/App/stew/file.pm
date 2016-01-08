@@ -47,6 +47,7 @@ sub _sandbox {
     my \@depends;
     my \@makedepends;
     my \@flags;
+    my \@os;
 
     sub new {
         my \$class = shift;
@@ -69,6 +70,7 @@ sub _sandbox {
     sub depends     { \@depends }
     sub makedepends { \@makedepends }
     sub flags       { \@flags }
+    sub os          { \@os }
 
     my \$phases = {};
     sub download(&) { \$phases->{download}    = shift }

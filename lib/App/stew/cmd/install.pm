@@ -107,6 +107,7 @@ sub run {
     App::stew::env->setup;
 
     my $builder = App::stew::installer->new(
+        base                  => $opt_base,
         root_dir              => $root_dir,
         build_dir             => $build_dir,
         repo                  => $repo,

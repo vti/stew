@@ -18,6 +18,7 @@ sub new {
     my $self = {};
     bless $self, $class;
 
+    $self->{base}      = $params{base};
     $self->{root_dir}  = $params{root_dir};
     $self->{build_dir} = $params{build_dir};
     $self->{repo}      = $params{repo};
@@ -48,6 +49,11 @@ sub build {
         return;
     }
 
+    if ($reinstall) {
+        my $uninstaller = App::stew::uninstaller->new(base => $self->{base});
+        $uninstaller->uninstall($stew->name);
+    }
+
     croak '$ENV{PREFIX} not defined' unless $ENV{PREFIX};
 
     _mkpath($ENV{PREFIX});
@@ -61,6 +67,23 @@ sub build {
     my $cwd  = getcwd();
     my $tree = [];
     eval {
+        if (my @os = $stew->os) {
+            my $match = 0;
+
+            foreach my $os (@os) {
+                if ($os =~ m/$ENV{STEW_OS}/) {
+                    $match = 1;
+                    last;
+                }
+            }
+
+            if (!$match) {
+                info sprintf "Not supported OS '%s'. Supported are '%s'. Skipping...",
+                  $ENV{STEW_OS}, join(', ', @os);
+                return $self;
+            }
+        }
+
         info sprintf "Resolving dependencies...", $stew->package;
         $self->_resolve_dependencies($stew, $stew_tree);
 
