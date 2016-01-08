@@ -97,7 +97,7 @@ sub build {
                 $tree = $builder->build($stew_tree);
             }
 
-            $self->_install_from_binary($stew, $dist_path);
+            $tree = $self->_install_from_binary($stew, $dist_path);
         }
 
         _chdir($cwd);
