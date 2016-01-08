@@ -57,6 +57,10 @@ sub gen_tree {
 sub dist_to_pkg {
     my ($dist) = @_;
 
+    $dist =~ s/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$//;
+
+    $dist =~ s{.*/}{};
+
     my @parts = map { s/_/-/g; $_ } split /::/, $dist;
 
     return 'lib' . join('-', map { lc } @parts) . '-perl';
@@ -72,7 +76,7 @@ sub gen_stew {
 
     $seen{$module->name}++;
 
-    my $pkg       = dist_to_pkg($module->name);
+    my $pkg       = dist_to_pkg($module->distribution);
     my ($version) = $module->distribution =~ m/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$/;
 
     if (!$version) {
