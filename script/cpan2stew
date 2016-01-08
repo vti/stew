@@ -84,7 +84,7 @@ sub gen_stew {
     }
 
     my $dist      = $module->distribution;
-    my $deps = join ', ', map { "'$_'" } map { dist_to_pkg($_->name) } @deps;
+    my $deps = join ', ', map { "'$_'" } map { dist_to_pkg($_->distribution) } @deps;
     $deps = ', ' . $deps if $deps;
 
     my $file = basename($dist);
