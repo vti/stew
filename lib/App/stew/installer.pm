@@ -80,7 +80,7 @@ sub build {
             _chdir $work_dir;
             _chdir "$dist_name/$ENV{PREFIX}";
 
-            cmd("cp --remove-destination -ra * $ENV{PREFIX}/");
+            cmd("cp -Ra * $ENV{PREFIX}/");
         }
         elsif ($stew->is('meta')) {
             info sprintf 'Meta package';
@@ -138,7 +138,7 @@ sub _install_from_binary {
     cmd("tar xzf $basename");
     _unlink $basename;
 
-    cmd("cp --remove-destination -ra * $ENV{PREFIX}/");
+    cmd("cp -Ra * $ENV{PREFIX}/");
 
     return _tree(".", ".");
 }
