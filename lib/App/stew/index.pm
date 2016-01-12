@@ -81,7 +81,7 @@ sub list_platforms {
         chomp $line;
         next unless $line =~ m/^dist\/(.*?)\/(.*?)$/;
 
-        push @platforms, "$1-$2";
+        push @platforms, {os => $1, arch => $2};
     }
     close $fh;
 
@@ -90,11 +90,11 @@ sub list_platforms {
 
 sub platform_available {
     my $self = shift;
-    my ($platform) = @_;
+    my ($os, $arch) = @_;
 
     my $platforms = $self->list_platforms;
 
-    if (grep { $platform eq $_ } @$platforms) {
+    if (grep { $os eq $_->{os} && $arch eq $_->{arch} } @$platforms) {
         return 1;
     }
 

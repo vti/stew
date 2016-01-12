@@ -47,14 +47,15 @@ subtest 'resolves latest version when greater or equals' => sub {
 subtest 'lists platforms' => sub {
     my $index = _build_index();
 
-    is_deeply $index->list_platforms, [qw/linux-x86_64/];
+    is_deeply $index->list_platforms, [{os => 'linux', arch => 'x86_64'}];
 };
 
 subtest 'checks if platform available' => sub {
     my $index = _build_index();
 
-    is $index->platform_available('windows'), 0;
-    is $index->platform_available('linux-x86_64'), 1;
+    is $index->platform_available('windows', 'x86'), 0;
+    is $index->platform_available('linux', 'x86'), 0;
+    is $index->platform_available('linux', 'x86_64'), 1;
 };
 
 done_testing;

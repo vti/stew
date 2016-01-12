@@ -96,7 +96,7 @@ sub run {
             warn "Platform '$platform' is not available. "
               . "Maybe you want --from-source or --force-platform?\n";
             warn "Available platforms are: \n\n";
-            warn join("\n", map { "    $_" } @$platforms) . "\n\n";
+            warn join("\n", map { "    --os $_->{os} --arch $_->{arch}" } @$platforms) . "\n\n";
 
             error 'Fail to detect platform';
         }
