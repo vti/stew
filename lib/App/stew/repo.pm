@@ -100,7 +100,7 @@ sub mirror_index {
             my $content = $response->{content};
 
             my @os;
-            while ($content =~ m#<a href="([^\.].*?)">.*?</a>#g) {
+            while ($content =~ m#<a href="([^\.].*?)/?">.*?</a>#g) {
                 push @os, $1;
             }
 
@@ -109,7 +109,7 @@ sub mirror_index {
                 next unless $response->{success};
 
                 my $content = $response->{content};
-                while ($content =~ m#<a href="([^\.].*?)">.*?</a>#g) {
+                while ($content =~ m#<a href="([^\.].*?)/?">.*?</a>#g) {
                     push @index, "dist/$os/$1";
                 }
             }

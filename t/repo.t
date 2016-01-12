@@ -120,7 +120,7 @@ EOP
 <head><title>Index of /dist/</title></head>
 <body bgcolor="white">
 <h1>Index of /stew/</h1><hr><pre><a href="../">../</a>
-<a href="linux">linux</a>                                 15-Oct-2015 08:54                 10
+<a href="linux/">linux</a>                                 15-Oct-2015 08:54                 10
 </pre><hr></body>
 </html>
 EOP
@@ -132,7 +132,7 @@ EOP
 <head><title>Index of /dist/linux/</title></head>
 <body bgcolor="white">
 <h1>Index of /stew/</h1><hr><pre><a href="../">../</a>
-<a href="x86_64">x86_64</a>                                 15-Oct-2015 08:54                 10
+<a href="x86_64/">x86_64</a>                                 15-Oct-2015 08:54                 10
 </pre><hr></body>
 </html>
 EOP
