@@ -90,7 +90,7 @@ sub run {
     warn "Installing for '$platform'\n";
 
     if (!$opt_force_platform && !$opt_from_source) {
-        if (!$index->platform_available($platform)) {
+        if (!$index->platform_available($opt_os, $opt_arch)) {
             my $platforms = $index->list_platforms;
 
             warn "Platform '$platform' is not available. "
