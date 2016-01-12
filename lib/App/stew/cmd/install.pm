@@ -32,6 +32,7 @@ sub run {
     my $opt_base;
     my $opt_prefix = 'local';
     my $opt_repo;
+    my $opt_force_platform;
     my $opt_os;
     my $opt_arch;
     my $opt_build = 'build';
@@ -46,6 +47,7 @@ sub run {
         "base=s"                => \$opt_base,
         "prefix=s"              => \$opt_prefix,
         "repo=s"                => \$opt_repo,
+        "force-platform"        => \$opt_force_platform,
         "os=s"                  => \$opt_os,
         "arch=s"                => \$opt_arch,
         "build=s"               => \$opt_build,
@@ -82,6 +84,23 @@ sub run {
     );
 
     my $index = App::stew::index->new(repo => $repo);
+
+    my $platform = "$opt_os-$opt_arch";
+
+    warn "Installing for '$platform'\n";
+
+    if (!$opt_force_platform && !$opt_from_source) {
+        if (!$index->platform_available($platform)) {
+            my $platforms = $index->list_platforms;
+
+            warn "Platform '$platform' is not available. "
+              . "Maybe you want --from-source or --force-platform?\n";
+            warn "Available platforms are: \n\n";
+            warn join("\n", map { "    $_" } @$platforms) . "\n\n";
+
+            error 'Fail to detect platform';
+        }
+    }
 
     my $snapshot = App::stew::snapshot->new(base => $opt_base);
     $snapshot->load;
