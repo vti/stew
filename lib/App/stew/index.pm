@@ -67,22 +67,58 @@ sub resolve {
     return;
 }
 
+sub list_platforms {
+    my $self = shift;
+
+    my @platforms;
+
+    my $index_file = $self->{repo}->mirror_index;
+
+    my @index;
+    open my $fh, '<', $index_file
+      or error "Can't read index file '$index_file': $!";
+    foreach my $line (<$fh>) {
+        chomp $line;
+        next unless $line =~ m/^dist\/(.*?)\/(.*?)$/;
+
+        push @platforms, "$1-$2";
+    }
+    close $fh;
+
+    return \@platforms;
+}
+
+sub platform_available {
+    my $self = shift;
+    my ($platform) = @_;
+
+    my $platforms = $self->list_platforms;
+
+    if (grep { $platform eq $_ } @$platforms) {
+        return 1;
+    }
+
+    return 0;
+}
+
 sub _read_index {
     my $self = shift;
 
     my $index_file = $self->{repo}->mirror_index;
 
     my @index;
-    open my $fh, '<', $index_file or error "Can't read index file '$index_file': $!";
+    open my $fh, '<', $index_file
+      or error "Can't read index file '$index_file': $!";
     foreach my $line (<$fh>) {
         chomp $line;
         next unless $line =~ m/^stew\/(.*?)_(.*?)\.stew$/;
 
-        push @index, {
-            name => $1,
+        push @index,
+          {
+            name    => $1,
             version => $2,
-            full => "$1_$2"
-        };
+            full    => "$1_$2"
+          };
     }
     close $fh;
 

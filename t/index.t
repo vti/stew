@@ -44,6 +44,19 @@ subtest 'resolves latest version when greater or equals' => sub {
     is $index->resolve('single>=1.0'), 'single_1.0';
 };
 
+subtest 'lists platforms' => sub {
+    my $index = _build_index();
+
+    is_deeply $index->list_platforms, [qw/linux-x86_64/];
+};
+
+subtest 'checks if platform available' => sub {
+    my $index = _build_index();
+
+    is $index->platform_available('windows'), 0;
+    is $index->platform_available('linux-x86_64'), 1;
+};
+
 done_testing;
 
 sub _build_repo {
