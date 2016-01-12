@@ -94,6 +94,26 @@ sub mirror_index {
                 }
             }
         }
+
+        my $response = $ua->get("$self->{path}dist");
+        if ($response->{success}) {
+            my $content = $response->{content};
+
+            my @os;
+            while ($content =~ m#<a href="([^\.].*?)">.*?</a>#g) {
+                push @os, $1;
+            }
+
+            foreach my $os (@os) {
+                my $response = $ua->get("$self->{path}dist/$os");
+                next unless $response->{success};
+
+                my $content = $response->{content};
+                while ($content =~ m#<a href="([^\.].*?)">.*?</a>#g) {
+                    push @index, "dist/$os/$1";
+                }
+            }
+        }
     }
     else {
         for my $type (qw(stew src)) {
@@ -102,6 +122,21 @@ sub mirror_index {
               map { "$type/$_" }
               grep { !/^\./ && -f "$self->{path}/$type/$_" } readdir($dh);
             closedir $dh;
+        }
+
+        if (opendir my $dh, "$self->{path}/dist") {
+            my @os = grep { !/^\./ && -d "$self->{path}/dist/$_" } readdir($dh);
+            closedir $dh;
+
+            foreach my $os (@os) {
+                opendir my $dh, "$self->{path}/dist/$os" or next;
+                my @arch = grep { !/^\./ && -d "$self->{path}/dist/$os/$_" } readdir($dh);
+                closedir $dh;
+
+                foreach my $arch (@arch) {
+                    push @index, "dist/$os/$arch";
+                }
+            }
         }
     }
 

@@ -57,6 +57,7 @@ subtest 'mirrors index from directory' => sub {
     my $index = do { local $/; open my $fh, "$build/index"; <$fh> };
     like $index, qr{src/single-1.0.tar.gz};
     like $index, qr{stew/single_1.0.stew};
+    like $index, qr{dist/linux/x86_64};
 };
 
 subtest 'mirrors index from http' => sub {
@@ -79,6 +80,7 @@ subtest 'mirrors index from http' => sub {
     my $index = do { local $/; open my $fh, "$build/index"; <$fh> };
     like $index, qr{src/single-1.0.tar.gz};
     like $index, qr{stew/single_1.0.stew};
+    like $index, qr{dist/linux/x86_64};
 };
 
 done_testing;
@@ -111,14 +113,26 @@ EOP
 </html>
 EOP
         },
-        'http://sources.local/dist/linux/x86_64' => {
+        'http://sources.local/dist' => {
             success => 1,
             content => <<'EOP'
 <html>
-<head><title>Index of /dist/linux/x86_64/</title></head>
+<head><title>Index of /dist/</title></head>
 <body bgcolor="white">
 <h1>Index of /stew/</h1><hr><pre><a href="../">../</a>
-<a href="single_1.0_linux-x86_64.tar.gz">single_1.0_linux-x86_64</a>                                 15-Oct-2015 08:54                 10
+<a href="linux">linux</a>                                 15-Oct-2015 08:54                 10
+</pre><hr></body>
+</html>
+EOP
+        },
+        'http://sources.local/dist/linux' => {
+            success => 1,
+            content => <<'EOP'
+<html>
+<head><title>Index of /dist/linux/</title></head>
+<body bgcolor="white">
+<h1>Index of /stew/</h1><hr><pre><a href="../">../</a>
+<a href="x86_64">x86_64</a>                                 15-Oct-2015 08:54                 10
 </pre><hr></body>
 </html>
 EOP
