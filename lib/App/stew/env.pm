@@ -52,11 +52,21 @@ sub detect_os {
     elsif ($os eq 'darwin') {
         my $cmd = 'sw_vers';
 
-        my $output = $self->_run_cmd('sw_vers');
+        my $output = $self->_run_cmd($cmd);
 
         my ($dist_version) = $output =~ m/ProductVersion:\s+(\d+\.\d+)/;
 
         $os .= "-osx";
+        $os .= "-$dist_version" if $dist_version;
+    }
+    elsif ($os eq 'cygwin') {
+        my $cmd = 'uname -r';
+
+        my $output = $self->_run_cmd($cmd);
+
+        my ($dist_version) = $output =~ m/^(\d+\.\d+)/;
+
+        $os = "windows-$os";
         $os .= "-$dist_version" if $dist_version;
     }
 

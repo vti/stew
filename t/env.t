@@ -103,6 +103,18 @@ EOF
     is_deeply [$env->mocked_call_args('_run_cmd')], [qw/sw_vers/];
 };
 
+subtest 'detect cygwin' => sub {
+    my $root = tempdir(CLEANUP => 1);
+
+    my $env = _build_env(osname => 'cygwin', run_cmd => <<'EOF');
+2.2.1(0.289/5/3)
+EOF
+
+    is($env->detect_os, 'windows-cygwin-2.2');
+
+    is_deeply [$env->mocked_call_args('_run_cmd')], ['uname -r'];
+};
+
 done_testing;
 
 sub _build_env {
