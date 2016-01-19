@@ -71,7 +71,7 @@ sub build {
             my $match = 0;
 
             foreach my $os (@os) {
-                if ($os =~ m/$ENV{STEW_OS}/) {
+                if ($ENV{STEW_OS} =~ m/$os/) {
                     $match = 1;
                     last;
                 }
