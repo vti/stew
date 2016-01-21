@@ -83,6 +83,25 @@ subtest 'mirrors index from http' => sub {
     like $index, qr{dist/linux/x86_64};
 };
 
+subtest 'correctly sorts packages' => sub {
+    my $build = tempdir(CLEANUP => 1);
+
+    my $repo = _build_repo(mirror_path => $build);
+
+    $repo->mirror_index;
+
+    my $index = do { local $/; open my $fh, "$build/index"; <$fh> };
+    my @stews = grep {/^stew\/single/} split /\n/, $index;
+
+    is_deeply \@stews,
+      [
+        'stew/single_0.8.stew',
+        'stew/single_0.9.stew',
+        'stew/single_1.0.stew',
+        'stew/single_1.0p1.stew',
+      ];
+};
+
 done_testing;
 
 sub _mock_ua {

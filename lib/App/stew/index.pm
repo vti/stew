@@ -52,10 +52,10 @@ sub resolve {
         return $package->{full};
     }
     elsif ($op eq '>=') {
-        my $package = first { $_->{version} ge $version } @packages;
-        return unless $package;
+        my @newer = grep { $_->{version} ge $version } @packages;
+        return unless @newer;
 
-        return $package->{full};
+        return $newer[-1]->{full};
     }
     elsif ($op eq '>') {
         my @packages = grep { $_->{version} gt $version } @packages;

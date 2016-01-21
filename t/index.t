@@ -10,7 +10,7 @@ use App::stew::index;
 subtest 'resolves to latest version' => sub {
     my $index = _build_index();
 
-    is $index->resolve('single'), 'single_1.0';
+    is $index->resolve('single'), 'single_1.0p1';
 };
 
 subtest 'returns undef when unknown package' => sub {
@@ -35,13 +35,13 @@ subtest 'returns undef when unknown version' => sub {
 subtest 'resolves latest version when greater than' => sub {
     my $index = _build_index();
 
-    is $index->resolve('single>0.8'), 'single_1.0';
+    is $index->resolve('single>0.8'), 'single_1.0p1';
 };
 
 subtest 'resolves latest version when greater or equals' => sub {
     my $index = _build_index();
 
-    is $index->resolve('single>=1.0'), 'single_1.0';
+    is $index->resolve('single>=1.0'), 'single_1.0p1';
 };
 
 subtest 'lists platforms' => sub {

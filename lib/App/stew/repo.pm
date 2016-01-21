@@ -142,10 +142,12 @@ sub mirror_index {
 
     my $to = File::Spec->catfile($self->{mirror_path}, 'index');
 
+    my @index_sorted = sort @index;
+
     _mkpath dirname $to;
 
     open my $fh, '>', $to or die "Can't create file '$to': $!";
-    print $fh "$_\n" for sort @index;
+    print $fh "$_\n" for @index_sorted;
     close $fh;
 
     return $to;
