@@ -48,8 +48,7 @@ sub build {
         info sprintf "'%s' is up to date", $stew->package;
         return;
     }
-
-    if ($reinstall) {
+    elsif ($self->{snapshot}->is_installed($stew->name)) {
         my $uninstaller = App::stew::uninstaller->new(base => $self->{base});
         $uninstaller->uninstall($stew->name);
     }
