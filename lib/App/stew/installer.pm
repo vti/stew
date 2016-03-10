@@ -28,6 +28,7 @@ sub new {
     $self->{from_source_recursive} = $params{from_source_recursive};
     $self->{reinstall}             = $params{reinstall};
     $self->{keep_files}            = $params{keep_files};
+    $self->{cache}                 = $params{cache};
 
     return $self;
 }

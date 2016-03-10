@@ -25,7 +25,8 @@ sub new {
     $self->{os}   = $params{os}   or croak 'os required';
     $self->{arch} = $params{arch} or croak 'arch required';
 
-    $self->{ua} = $params{ua};
+    $self->{ua}    = $params{ua};
+    $self->{cache} = $params{cache};
 
     return $self;
 }
@@ -37,7 +38,8 @@ sub mirror_stew {
     my $full_name =
       $self->{path} . File::Spec->catfile('stew', $name . '.stew');
 
-    return $self->mirror_file($full_name, File::Spec->catfile($self->{mirror_path}, 'stew'));
+    return $self->mirror_file($full_name,
+        File::Spec->catfile($self->{mirror_path}, 'stew'));
 }
 
 sub mirror_src {
@@ -46,7 +48,8 @@ sub mirror_src {
 
     my $full_name = $self->{path} . File::Spec->catfile('src', $filename);
 
-    return $self->mirror_file($full_name, File::Spec->catfile($self->{mirror_path}, 'src'));
+    return $self->mirror_file($full_name,
+        File::Spec->catfile($self->{mirror_path}, 'src'));
 }
 
 sub mirror_dist_dest {
@@ -56,7 +59,8 @@ sub mirror_dist_dest {
     my $os   = $self->{os};
     my $arch = $self->{arch};
 
-    return File::Spec->catfile($self->{mirror_path}, 'dist', $os, $arch, "${name}_${version}_$os-$arch.tar.gz");
+    return File::Spec->catfile($self->{mirror_path}, 'dist', $os, $arch,
+        "${name}_${version}_$os-$arch.tar.gz");
 }
 
 sub mirror_dist {
@@ -70,13 +74,22 @@ sub mirror_dist {
     my $arch = $self->{arch};
 
     my $full_name = $self->{path}
-      . File::Spec->catfile('dist', $os, $arch, "${name}_${version}_$os-$arch.tar.gz");
+      . File::Spec->catfile('dist', $os, $arch,
+        "${name}_${version}_$os-$arch.tar.gz");
 
-    return $self->mirror_file($full_name, File::Spec->catfile($self->{mirror_path}, 'dist', $os, $arch));
+    return $self->mirror_file($full_name,
+        File::Spec->catfile($self->{mirror_path}, 'dist', $os, $arch));
 }
 
 sub mirror_index {
     my $self = shift;
+
+    my $to = File::Spec->catfile($self->{mirror_path}, 'index');
+
+    if ($self->{cache}) {
+        debug("NOT Mirroring index");
+        return $to;
+    }
 
     my @index;
 
@@ -89,7 +102,9 @@ sub mirror_index {
             if ($response->{success}) {
                 my $content = $response->{content};
 
-                while ($content =~ m#<a href="(.*?\.(?:stew|tar\.gz))">.*?</a>#g) {
+                while (
+                    $content =~ m#<a href="(.*?\.(?:stew|tar\.gz))">.*?</a>#g)
+                {
                     push @index, "$type/$1";
                 }
             }
@@ -117,9 +132,9 @@ sub mirror_index {
     }
     else {
         for my $type (qw(stew src)) {
-            opendir my $dh, "$self->{path}/$type" or error "Can't open directory '$self->{path}/$type': $!";
-            push @index,
-              map { "$type/$_" }
+            opendir my $dh, "$self->{path}/$type"
+              or error "Can't open directory '$self->{path}/$type': $!";
+            push @index, map { "$type/$_" }
               grep { !/^\./ && -f "$self->{path}/$type/$_" } readdir($dh);
             closedir $dh;
         }
@@ -130,7 +145,9 @@ sub mirror_index {
 
             foreach my $os (@os) {
                 opendir my $dh, "$self->{path}/dist/$os" or next;
-                my @arch = grep { !/^\./ && -d "$self->{path}/dist/$os/$_" } readdir($dh);
+                my @arch =
+                  grep { !/^\./ && -d "$self->{path}/dist/$os/$_" }
+                  readdir($dh);
                 closedir $dh;
 
                 foreach my $arch (@arch) {
@@ -139,8 +156,6 @@ sub mirror_index {
             }
         }
     }
-
-    my $to = File::Spec->catfile($self->{mirror_path}, 'index');
 
     my @index_sorted = sort @index;
 
@@ -157,11 +172,16 @@ sub mirror_file {
     my $self = shift;
     my ($in, $to_dir) = @_;
 
+    my $to = File::Spec->catfile($to_dir, basename $in);
+
+    if ($self->{cache}) {
+        debug("NOT Mirroring '$in' to '$to_dir'");
+        return $to;
+    }
+
     _mkpath($to_dir);
 
     debug("Mirroring '$in' to '$to_dir'");
-
-    my $to = File::Spec->catfile($to_dir, basename $in);
 
     if (-e $to) {
         debug("File '$to' exists. Skipping");

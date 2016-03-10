@@ -42,6 +42,7 @@ sub run {
     my $opt_from_source_recursive;
     my $opt_reinstall;
     my $opt_keep_files;
+    my $opt_cache;
     GetOptionsFromArray(
         \@argv,
         "base=s"                => \$opt_base,
@@ -57,6 +58,7 @@ sub run {
         "from-source-recursive" => \$opt_from_source_recursive,
         "reinstall"             => \$opt_reinstall,
         "keep-files"            => \$opt_keep_files,
+        "cache"                 => \$opt_cache,
     ) or die "error";
 
     $opt_os   //= App::stew::env->detect_os;
@@ -80,7 +82,8 @@ sub run {
         path        => $opt_repo,
         mirror_path => "$build_dir/.cache",
         os          => $opt_os,
-        arch        => $opt_arch
+        arch        => $opt_arch,
+        cache       => $opt_cache,
     );
 
     my $index = App::stew::index->new(repo => $repo);
@@ -96,7 +99,9 @@ sub run {
             warn "Platform '$platform' is not available. "
               . "Maybe you want --from-source or --force-platform?\n";
             warn "Available platforms are: \n\n";
-            warn join("\n", map { "    --os $_->{os} --arch $_->{arch}" } @$platforms) . "\n\n";
+            warn join("\n",
+                map { "    --os $_->{os} --arch $_->{arch}" } @$platforms)
+              . "\n\n";
 
             error 'Fail to detect platform';
         }
