@@ -94,8 +94,10 @@ sub platform_available {
 
     my $platforms = $self->list_platforms;
 
-    if (grep { $os eq $_->{os} && $arch eq $_->{arch} } @$platforms) {
-        return 1;
+    foreach my $platform (@$platforms) {
+        if ($platform->{os} =~ m/^\Q$os\E/ && $arch eq $platform->{arch}) {
+            return 1;
+        }
     }
 
     return 0;
