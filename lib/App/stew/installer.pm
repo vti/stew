@@ -84,11 +84,11 @@ sub build {
             }
         }
 
-        info sprintf "Resolving dependencies...", $stew->package;
+        info "Resolving dependencies...";
         $self->_resolve_dependencies($stew, $stew_tree);
 
         if ($stew->is('cross-platform')) {
-            info sprintf 'Cross platform package';
+            info 'Cross platform package';
 
             my $builder = $self->_build_builder;
 
@@ -106,7 +106,7 @@ sub build {
             cmd("cp -Ra * $ENV{PREFIX}/");
         }
         elsif ($stew->is('meta')) {
-            info sprintf 'Meta package';
+            info 'Meta package';
         }
         else {
             my $dist_path =
