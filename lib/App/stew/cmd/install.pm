@@ -70,9 +70,9 @@ sub run {
     mkpath($opt_base);
     $opt_base = abs_path($opt_base);
 
+    mkpath($opt_build);
     my $root_dir  = abs_path(cwd());
     my $build_dir = abs_path($opt_build);
-    mkpath($build_dir);
 
     $ENV{STEW_LOG_LEVEL} = $opt_verbose ? 1 : 0;
     $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
