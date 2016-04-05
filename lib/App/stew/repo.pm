@@ -7,7 +7,7 @@ use HTTP::Tiny;
 use File::Basename qw(dirname basename);
 use File::Path ();
 use Carp qw(croak);
-use App::stew::util qw(error debug _copy _mkpath);
+use App::stew::util qw(error debug _copy _mkpath sort_by_version);
 
 sub new {
     my $class = shift;
@@ -157,7 +157,7 @@ sub mirror_index {
         }
     }
 
-    my @index_sorted = sort @index;
+    my @index_sorted = sort_by_version @index;
 
     _mkpath dirname $to;
 

@@ -5,7 +5,7 @@ use Test::More;
 use File::Temp qw(tempdir);
 use File::Basename qw(dirname);
 use File::Path qw(mkpath);
-use App::stew::util qw(_tree _tree_diff);
+use App::stew::util qw(_tree _tree_diff sort_by_version);
 
 subtest '_tree: returns file tree' => sub {
     my $tmp_dir = tempdir(CLEANUP => 1);
@@ -32,6 +32,17 @@ subtest '_tree_diff: returns diff' => sub {
     is_deeply _tree_diff(['foo', 'bar'],
         ['other', 'other', 'foo', 'other', 'other', 'bar']),
       ['other', 'other', 'other', 'other'];
+};
+
+subtest 'sort_by_version: sorts by version' => sub {
+    is_deeply [sort_by_version()], [];
+    is_deeply [sort_by_version('foo_1.2', 'foo_1.3')], ['foo_1.2', 'foo_1.3'];
+    is_deeply [sort_by_version('foo_1.1.1', 'foo_1.1')],
+      ['foo_1.1', 'foo_1.1.1'];
+    is_deeply [sort_by_version('foo-1',   'foo-2')], ['foo-1', 'foo-2'];
+    is_deeply [sort_by_version('foo-1p1', 'foo-1')], ['foo-1', 'foo-1p1'];
+    is_deeply [sort_by_version('foo_0.29.1.stew', 'foo_0.29.stew')],
+      ['foo_0.29.stew', 'foo_0.29.1.stew'];
 };
 
 sub _write_file {

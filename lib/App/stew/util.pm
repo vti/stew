@@ -5,7 +5,7 @@ use warnings;
 
 use base 'Exporter';
 
-our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _rmtree _copy _unlink _tree _tree_diff);
+our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _rmtree _copy _unlink _tree _tree_diff sort_by_version);
 
 use File::Find qw(find);
 use Carp qw(croak);
@@ -155,6 +155,27 @@ sub _tree_diff {
     }
 
     return \@diff;
+}
+
+sub sort_by_version {
+    my (@list) = @_;
+
+    my %packages;
+
+    foreach my $list (@list) {
+        my ($pkg, $v, $tail) = $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:[a-z]\d)?)(.*)/;
+
+        $packages{"$pkg$v"} = $tail;
+    }
+
+    my @packages = sort keys %packages;
+
+    my @sorted;
+    foreach my $package (@packages) {
+        push @sorted, "$package$packages{$package}";
+    }
+
+    return @sorted;
 }
 
 1;
