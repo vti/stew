@@ -36,13 +36,16 @@ subtest '_tree_diff: returns diff' => sub {
 
 subtest 'sort_by_version: sorts by version' => sub {
     is_deeply [sort_by_version()], [];
-    is_deeply [sort_by_version('foo_1.2', 'foo_1.3')], ['foo_1.2', 'foo_1.3'];
-    is_deeply [sort_by_version('foo_1.1.1', 'foo_1.1')],
-      ['foo_1.1', 'foo_1.1.1'];
-    is_deeply [sort_by_version('foo-1',   'foo-2')], ['foo-1', 'foo-2'];
-    is_deeply [sort_by_version('foo-1p1', 'foo-1')], ['foo-1', 'foo-1p1'];
+    is_deeply [sort_by_version('foo_1.2.stew', 'foo_1.3.stew')], ['foo_1.2.stew', 'foo_1.3.stew'];
+    is_deeply [sort_by_version('foo_1.1.1.stew', 'foo_1.1.stew')],
+      ['foo_1.1.stew', 'foo_1.1.1.stew'];
+    is_deeply [sort_by_version('foo-1.stew',   'foo-2.stew')], ['foo-1.stew', 'foo-2.stew'];
+    is_deeply [sort_by_version('foo-1p1.stew', 'foo-1.stew')], ['foo-1.stew', 'foo-1p1.stew'];
     is_deeply [sort_by_version('foo_0.29.1.stew', 'foo_0.29.stew')],
       ['foo_0.29.stew', 'foo_0.29.1.stew'];
+
+    is_deeply [sort_by_version('class-c3-perl-1.2.4.tar.gz', 'class-c3-perl-1.2.3.tar.gz')],
+      ['class-c3-perl-1.2.3.tar.gz', 'class-c3-perl-1.2.4.tar.gz'];
 };
 
 sub _write_file {

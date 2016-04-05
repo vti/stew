@@ -163,7 +163,7 @@ sub sort_by_version {
     my %packages;
 
     foreach my $list (@list) {
-        my ($pkg, $v, $tail) = $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:[a-z]\d)?)(.*)/;
+        my ($pkg, $v, $tail) = $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:[a-z]\d)?)(\..*)/;
 
         $packages{"$pkg$v"} = $tail;
     }
