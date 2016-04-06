@@ -46,6 +46,15 @@ subtest 'sort_by_version: sorts by version' => sub {
 
     is_deeply [sort_by_version('class-c3-perl-1.2.4.tar.gz', 'class-c3-perl-1.2.3.tar.gz')],
       ['class-c3-perl-1.2.3.tar.gz', 'class-c3-perl-1.2.4.tar.gz'];
+
+    is_deeply [sort_by_version('zip30.tar.gz', 'zip20.tar.gz')],
+      ['zip20.tar.gz', 'zip30.tar.gz'];
+
+    is_deeply [sort_by_version('libjpg_9b.stew', 'libjpg_8b.stew')],
+      ['libjpg_8b.stew', 'libjpg_9b.stew'];
+
+    is_deeply [sort_by_version('dist/linux-centos-7/x86', 'dist/linux-centos-6/x86')],
+      ['dist/linux-centos-6/x86', 'dist/linux-centos-7/x86'];
 };
 
 sub _write_file {

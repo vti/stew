@@ -163,9 +163,15 @@ sub sort_by_version {
     my %packages;
 
     foreach my $list (@list) {
-        my ($pkg, $v, $tail) = $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:[a-z]\d)?)(\..*)/;
+        if ($list =~ m{^dist/}) {
+            $packages{$list} = '';
+        } else {
+            my ($pkg, $v, $tail) = $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:[a-z]\d?)?)(\..*)/;
 
-        $packages{"$pkg$v"} = $tail;
+            die "Can't parse $list" unless $pkg && $v && $tail;
+
+            $packages{"$pkg$v"} = $tail;
+        }
     }
 
     my @packages = sort keys %packages;
