@@ -54,7 +54,7 @@ $fatpacked{"App/stew/env.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'AP
 APP_STEW_ENV
 
 $fatpacked{"App/stew/file.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_STEW_FILE';
-  package App::stew::file;use strict;use warnings;use App::stew::util qw(slurp_file error);sub new {my$class=shift;my$self={};bless$self,$class;return$self}sub parse {my$class=shift;my ($stew_file,$type)=@_;my$content=slurp_file($stew_file);my$stew_class=$class->_sandbox($stew_file,$content,$type);return$stew_class->new}sub _sandbox {my$self=shift;my ($file,$content,$type)=@_;$type='' unless defined$type;my$class_name='stew::_build_' ._rand_str();my$package=<<"EOP";eval$package or error("Error compiling '$file': $@");return$class_name}sub _rand_str {my@alpha=('0' .. '9','a' .. 'z','A' .. 'Z');my$str='';$str .= $alpha[rand($#alpha)]for 1 .. 16;return$str}1;
+  package App::stew::file;use strict;use warnings;use App::stew::util qw(slurp_file error);my%CACHE;sub new {my$class=shift;my$self={};bless$self,$class;return$self}sub parse {my$class=shift;my ($stew_file,$type)=@_;return$CACHE{"$stew_file"}if$CACHE{"$stew_file"};my$content=slurp_file($stew_file);my$stew_class=$class->_sandbox($stew_file,$content,$type);my$stew=$stew_class->new;$CACHE{"$stew_file"}=$stew;return$stew}sub _sandbox {my$self=shift;my ($file,$content,$type)=@_;$type='' unless defined$type;my$class_name='stew::_build_' ._rand_str();my$package=<<"EOP";eval$package or error("Error compiling '$file': $@");return$class_name}sub _rand_str {my@alpha=('0' .. '9','a' .. 'z','A' .. 'Z');my$str='';$str .= $alpha[rand($#alpha)]for 1 .. 16;return$str}1;
       package $class_name;
       use strict;
       use warnings;

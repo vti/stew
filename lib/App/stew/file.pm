@@ -5,6 +5,8 @@ use warnings;
 
 use App::stew::util qw(slurp_file error);
 
+my %CACHE;
+
 sub new {
     my $class = shift;
 
@@ -18,12 +20,16 @@ sub parse {
     my $class = shift;
     my ($stew_file, $type) = @_;
 
-    #_logn("Parsing '$stew_file'");
+    return $CACHE{"$stew_file"} if $CACHE{"$stew_file"};
 
     my $content = slurp_file($stew_file);
 
     my $stew_class = $class->_sandbox($stew_file, $content, $type);
-    return $stew_class->new;
+    my $stew = $stew_class->new;
+
+    $CACHE{"$stew_file"} = $stew;
+
+    return $stew;
 }
 
 sub _sandbox {
