@@ -5,13 +5,16 @@ use warnings;
 
 use Config;
 use Linux::Distribution;
-use App::stew::util qw(debug slurp_file);
+use App::stew::util qw(debug error slurp_file);
 
 sub new {
     my $class = shift;
+    my (%params) = @_;
 
     my $self = {};
     bless $self, $class;
+
+    $self->{prefix} = $params{prefix} || error 'prefix required';
 
     return $self;
 }
@@ -19,15 +22,17 @@ sub new {
 sub setup {
     my $self = shift;
 
-    _unshift_env(PATH => "$ENV{PREFIX}/bin");
+    my $prefix = $self->{prefix};
 
-    _unshift_env(LIBPATH         => "$ENV{PREFIX}/lib");
-    _unshift_env(LIBRARY_PATH    => "$ENV{PREFIX}/lib");
-    _unshift_env(LD_LIBRARY_PATH => "$ENV{PREFIX}/lib");
+    _unshift_env(PATH => "$prefix/bin");
 
-    _unshift_env(CPATH              => "$ENV{PREFIX}/include");
-    _unshift_env(C_INCLUDE_PATH     => "$ENV{PREFIX}/include");
-    _unshift_env(CPLUS_INCLUDE_PATH => "$ENV{PREFIX}/include");
+    _unshift_env(LIBPATH         => "$prefix/lib");
+    _unshift_env(LIBRARY_PATH    => "$prefix/lib");
+    _unshift_env(LD_LIBRARY_PATH => "$prefix/lib");
+
+    _unshift_env(CPATH              => "$prefix/include");
+    _unshift_env(C_INCLUDE_PATH     => "$prefix/include");
+    _unshift_env(CPLUS_INCLUDE_PATH => "$prefix/include");
 }
 
 sub detect_os {

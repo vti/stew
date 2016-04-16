@@ -87,7 +87,7 @@ sub run {
     $ENV{STEW_ARCH} = $opt_arch;
     $ENV{PREFIX}    = File::Spec->catfile($opt_base, $opt_prefix);
 
-    App::stew::env->setup;
+    App::stew::env->new(prefix => $ENV{PREFIX})->setup;
 
     my $builder = App::stew::builder->new(
         root_dir    => $root_dir,

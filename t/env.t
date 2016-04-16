@@ -115,16 +115,41 @@ EOF
     is_deeply [$env->mocked_call_args('_run_cmd')], ['uname -r'];
 };
 
+subtest 'sets correct env variables' => sub {
+    local $ENV{PATH};
+    local $ENV{LIBPATH};
+    local $ENV{LIBRARY_PATH};
+    local $ENV{LD_LIBRARY_PATH};
+    local $ENV{CPATH};
+    local $ENV{C_INCLUDE_PATH};
+    local $ENV{CPLUS_INCLUDE_PATH};
+
+    my $prefix = tempdir(CLEANUP => 1);
+    my $env = _build_env(prefix => $prefix);
+
+    $env->setup;
+
+    is $ENV{PATH},               "$prefix/bin";
+    is $ENV{LIBPATH},            "$prefix/lib";
+    is $ENV{LIBRARY_PATH},       "$prefix/lib";
+    is $ENV{LD_LIBRARY_PATH},    "$prefix/lib";
+    is $ENV{C_INCLUDE_PATH},     "$prefix/include";
+    is $ENV{CPLUS_INCLUDE_PATH}, "$prefix/include";
+};
+
 done_testing;
 
 sub _build_env {
     my (%params) = @_;
 
-    my $env = App::stew::env->new;
+    my $osname  = delete $params{osname};
+    my $run_cmd = delete $params{run_cmd};
+
+    my $env = App::stew::env->new(prefix => tempdir(CLEANUP => 1), %params);
 
     $env = Test::MonkeyMock->new($env);
-    $env->mock(_osname  => sub { $params{osname} });
-    $env->mock(_run_cmd => sub { $params{run_cmd} });
+    $env->mock(_osname  => sub { $osname });
+    $env->mock(_run_cmd => sub { $run_cmd });
 
     return $env;
 }
