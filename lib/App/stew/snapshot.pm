@@ -48,11 +48,11 @@ sub is_installed {
 
 sub is_up_to_date {
     my $self = shift;
-    my ($package, $version) = @_;
+    my ($name, $version) = @_ == 1 ? split /_/, $_[0], 2 : @_;
 
-    return 0 unless $self->is_installed($package);
+    return 0 unless $self->is_installed($name);
 
-    return 0 unless $self->{snapshot}->{$package}->{version} eq $version;
+    return 0 unless $self->{snapshot}->{$name}->{version} eq $version;
 
     return 1;
 }

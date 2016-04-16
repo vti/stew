@@ -124,6 +124,13 @@ sub run {
 
     my @trees;
     foreach my $package (@argv) {
+        my $resolved = $index->resolve($package);
+
+        if ($snapshot->is_up_to_date($resolved)) {
+            info sprintf "'%s' is up to date", $resolved;
+            next;
+        }
+
         my $tree = App::stew::tree->new(repo => $repo, index => $index);
         my $dump = $tree->build($package);
 
