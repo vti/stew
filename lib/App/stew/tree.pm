@@ -32,16 +32,9 @@ sub build {
     my $stew = $self->_parse_stew($stew_file, $type);
 
     my $tree = {
-        stew              => $stew,
-        make_dependencies => [],
-        dependencies      => []
+        stew         => $stew,
+        dependencies => []
     };
-
-    my @makedepends = $stew->makedepends;
-    foreach my $makedepends (@makedepends) {
-        push @{$tree->{make_dependencies}},
-          $self->build($makedepends, 'makedepends');
-    }
 
     my @depends = $stew->depends;
     foreach my $depends (@depends) {
@@ -57,10 +50,6 @@ sub flatten {
 
     my @list;
 
-    foreach my $make_dep (@{$tree->{make_dependencies}}) {
-        push @list, $self->flatten($make_dep);
-    }
-
     foreach my $dep (@{$tree->{dependencies}}) {
         push @list, $self->flatten($dep);
     }
@@ -75,10 +64,6 @@ sub flatten_dependencies {
     my ($tree) = @_;
 
     my @list;
-
-    foreach my $make_dep (@{$tree->{make_dependencies}}) {
-        push @list, $self->flatten($make_dep);
-    }
 
     foreach my $dep (@{$tree->{dependencies}}) {
         push @list, $self->flatten($dep);

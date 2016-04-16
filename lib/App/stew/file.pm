@@ -49,7 +49,6 @@ sub _sandbox {
     my \@files;
     my \$url;
     my \@depends;
-    my \@makedepends;
     my \@flags;
     my \@os;
 
@@ -62,16 +61,15 @@ sub _sandbox {
         return \$self;
     }
 
-    sub name        { \$name }
-    sub version     { \$version }
-    sub package     { \$package }
-    sub file        { \$file }
-    sub files       { \@files }
-    sub url         { \$url }
-    sub depends     { \@depends }
-    sub makedepends { \@makedepends }
-    sub flags       { \@flags }
-    sub os          { \@os }
+    sub name    { \$name }
+    sub version { \$version }
+    sub package { \$package }
+    sub file    { \$file }
+    sub files   { \@files }
+    sub url     { \$url }
+    sub depends { \@depends }
+    sub flags   { \@flags }
+    sub os      { \@os }
 
     my \$phases = {};
     sub download(&) { \$phases->{download} = shift }

@@ -141,27 +141,6 @@ sub _resolve_dependencies {
     my $build_dir = $self->{build_dir};
     my $work_dir = File::Spec->catfile($build_dir, $stew->package);
 
-    my @makedepends = @{$tree->{make_dependencies} || []};
-    if (@makedepends) {
-        info "Found make dependencies: " . join(', ', map { $_->{stew}->package } @makedepends);
-    }
-    foreach my $tree (@makedepends) {
-        my $stew = $tree->{stew};
-
-        _chdir($self->{root_dir});
-
-        info sprintf "Preparing make dependency '%s'", $stew->package;
-        $self->_run_stew_phase($stew, 'prepare');
-
-        _chdir($self->{root_dir});
-
-        my $to = sprintf '%s/%s', $work_dir, $stew->package;
-        if (!-e $to) {
-            cmd(sprintf "ln -s $build_dir/%s/%s $to",
-                $stew->package, $stew->package);
-        }
-    }
-
     my @depends = @{$tree->{dependencies} || []};
     foreach my $tree (@depends) {
         my $stew = $tree->{stew};
