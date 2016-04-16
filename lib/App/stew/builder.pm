@@ -27,7 +27,7 @@ sub new {
 
 sub build {
     my $self = shift;
-    my ($stew_tree, $mode) = @_;
+    my ($stew_tree) = @_;
 
     my $stew = $stew_tree->{stew};
 

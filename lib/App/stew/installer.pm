@@ -35,13 +35,15 @@ sub new {
 
 sub build {
     my $self = shift;
-    my ($stew_tree, $mode) = @_;
+    my ($stew_tree, %options) = @_;
+
+    my $is_dependency = !!$options{satisfies};
 
     my $stew = $stew_tree->{stew};
 
-    my $reinstall = !$mode && $self->{reinstall};
+    my $reinstall = !$is_dependency && $self->{reinstall};
     my $from_source =
-      $self->{from_source_recursive} || (!$mode && $self->{from_source});
+      $self->{from_source_recursive} || (!$is_dependency && $self->{from_source});
 
     if (  !$reinstall
         && $self->{snapshot}->is_up_to_date($stew->name, $stew->version))
@@ -66,6 +68,7 @@ sub build {
 
     my $cwd  = getcwd();
     my $tree = [];
+    my @depends;
     eval {
         if (my @os = $stew->os) {
             my $match = 0;
@@ -85,7 +88,7 @@ sub build {
         }
 
         info "Resolving dependencies...";
-        $self->_resolve_dependencies($stew, $stew_tree);
+        @depends = $self->_resolve_dependencies($stew, $stew_tree);
 
         if ($stew->is('cross-platform')) {
             info 'Cross platform package';
@@ -133,7 +136,16 @@ sub build {
     };
 
     info sprintf "Done installing '%s'", $stew->package;
-    $self->{snapshot}->mark_installed($stew->name, $stew->version, $tree);
+    $self->{snapshot}->mark_installed(
+        name    => $stew->name,
+        version => $stew->version,
+        files   => $tree,
+        depends => [
+            map { {name => $_->{stew}->name, version => $_->{stew}->version} }
+              @depends
+        ],
+        $is_dependency ? (dependency => 1) : ()
+    );
 
     _rmtree $work_dir unless $self->{keep_files};
 
@@ -175,15 +187,18 @@ sub _resolve_dependencies {
         info "Found dependencies: "
           . join(', ', map { $_->{stew}->package } @depends);
     }
+
     foreach my $tree (@depends) {
         my $stew = $tree->{stew};
 
         _chdir($self->{root_dir});
 
-        $self->build($tree, 'dep');
+        $self->build($tree, satisfies => $stew);
 
         _chdir($self->{root_dir});
     }
+
+    return @depends;
 }
 
 sub _build_builder {

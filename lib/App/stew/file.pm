@@ -18,13 +18,13 @@ sub new {
 
 sub parse {
     my $class = shift;
-    my ($stew_file, $type) = @_;
+    my ($stew_file) = @_;
 
     return $CACHE{"$stew_file"} if $CACHE{"$stew_file"};
 
     my $content = slurp_file($stew_file);
 
-    my $stew_class = $class->_sandbox($stew_file, $content, $type);
+    my $stew_class = $class->_sandbox($stew_file, $content);
     my $stew = $stew_class->new;
 
     $CACHE{"$stew_file"} = $stew;
@@ -34,9 +34,7 @@ sub parse {
 
 sub _sandbox {
     my $self = shift;
-    my ($file, $content, $type) = @_;
-
-    $type = '' unless defined $type;
+    my ($file, $content) = @_;
 
     my $class_name = 'stew::_build_' . _rand_str();
 
@@ -64,9 +62,6 @@ sub _sandbox {
         return \$self;
     }
 
-    sub is_dependency     { '$type' eq 'depends' }
-    sub is_makedependency { '$type' eq 'makedepends' }
-
     sub name        { \$name }
     sub version     { \$version }
     sub package     { \$package }
@@ -79,11 +74,11 @@ sub _sandbox {
     sub os          { \@os }
 
     my \$phases = {};
-    sub download(&) { \$phases->{download}    = shift }
-    sub prepare(&)  { \$phases->{prepare}     = shift }
-    sub build(&)    { \$phases->{build}       = shift }
-    sub install(&)  { \$phases->{install}     = shift }
-    sub cleanup(&)  { \$phases->{cleanup} = shift }
+    sub download(&) { \$phases->{download} = shift }
+    sub prepare(&)  { \$phases->{prepare}  = shift }
+    sub build(&)    { \$phases->{build}    = shift }
+    sub install(&)  { \$phases->{install}  = shift }
+    sub cleanup(&)  { \$phases->{cleanup}  = shift }
 
     sub phase { \$phases->{\$_[1]} }
 

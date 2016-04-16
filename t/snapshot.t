@@ -15,7 +15,11 @@ subtest 'is_installed: returns false when empty' => sub {
 subtest 'is_installed: returns true when installed' => sub {
     my $snapshot = _build_snapshot();
 
-    $snapshot->mark_installed('foo', '1.0', ['foo']);
+    $snapshot->mark_installed(
+        name    => 'foo',
+        version => '1.0',
+        files   => ['foo']
+    );
 
     is $snapshot->is_installed('foo'), 1;
 };
@@ -23,7 +27,11 @@ subtest 'is_installed: returns true when installed' => sub {
 subtest 'is_up_to_date: returns true when installed' => sub {
     my $snapshot = _build_snapshot();
 
-    $snapshot->mark_installed('foo', '1.0', ['foo']);
+    $snapshot->mark_installed(
+        name    => 'foo',
+        version => '1.0',
+        files   => ['foo']
+    );
 
     is $snapshot->is_up_to_date('foo', '1.0'), 1;
 };
@@ -37,7 +45,11 @@ subtest 'is_up_to_date: returns false when not installed' => sub {
 subtest 'is_up_to_date: returns false when not old version' => sub {
     my $snapshot = _build_snapshot();
 
-    $snapshot->mark_installed('foo', '1.0', ['foo']);
+    $snapshot->mark_installed(
+        name    => 'foo',
+        version => '1.0',
+        files   => ['foo']
+    );
 
     is $snapshot->is_up_to_date('foo', '1.2'), 0;
 };
@@ -45,7 +57,11 @@ subtest 'is_up_to_date: returns false when not old version' => sub {
 subtest 'mark_installed: sets package to installed' => sub {
     my $snapshot = _build_snapshot();
 
-    $snapshot->mark_installed('foo', '1.0', ['foo']);
+    $snapshot->mark_installed(
+        name    => 'foo',
+        version => '1.0',
+        files   => ['foo']
+    );
 
     is $snapshot->is_installed('foo'), 1;
 };
@@ -53,7 +69,11 @@ subtest 'mark_installed: sets package to installed' => sub {
 subtest 'mark_uninstalled: sets package to uninstalled' => sub {
     my $snapshot = _build_snapshot();
 
-    $snapshot->mark_installed('foo', '1.0', ['foo']);
+    $snapshot->mark_installed(
+        name    => 'foo',
+        version => '1.0',
+        files   => ['foo']
+    );
     $snapshot->mark_uninstalled('foo');
 
     is $snapshot->is_installed('foo'), 0;

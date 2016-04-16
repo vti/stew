@@ -79,9 +79,11 @@ sub load {
 
 sub mark_installed {
     my $self = shift;
-    my ($name, $version, $files) = @_;
+    my (%options) = @_;
 
-    $self->{snapshot}->{$name} = {version => $version, files => $files};
+    my $name = delete $options{name};
+
+    $self->{snapshot}->{$name} = {%options};
     $self->store;
 
     return $self;
