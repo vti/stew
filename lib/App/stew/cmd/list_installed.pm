@@ -30,6 +30,8 @@ sub run {
     my $snapshot = App::stew::snapshot->new(base => $opt_base)->load;
 
     foreach my $key (sort keys %$snapshot) {
+        next if $key eq '_';
+        next if $snapshot->{$key}->{dependency};
         print "$key $snapshot->{$key}->{version}\n";
     }
 }
