@@ -126,7 +126,7 @@ sub run {
     foreach my $package (@argv) {
         my $resolved = $index->resolve($package);
 
-        if ($snapshot->is_up_to_date($resolved)) {
+        if (!$opt_reinstall && $snapshot->is_up_to_date($resolved)) {
             info sprintf "'%s' is up to date", $resolved;
             next;
         }
