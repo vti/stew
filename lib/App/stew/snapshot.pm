@@ -66,16 +66,13 @@ sub get_package {
 
 sub list_not_required {
     my $self = shift;
-    my ($root) = @_;
-
-    return $self->list_not_required_of($root) if $root;
 
     my @not_required;
     foreach my $name (keys %{$self->{snapshot}}) {
         push @not_required, $name unless $self->is_required($name);
     }
 
-    return @not_required;
+    return sort @not_required;
 }
 
 sub is_required {
@@ -98,7 +95,8 @@ sub is_required {
           && (my @depends = @{$dependant_info->{depends}});
 
         if (my $depends = first { $name eq $_->{name} } @depends) {
-            return $self->is_required($dependant_name);
+            my $is_required = $self->is_required($dependant_name);
+            return $is_required if $is_required;
         }
     }
 

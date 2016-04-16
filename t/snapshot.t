@@ -99,9 +99,16 @@ subtest 'is_required: returns flag if package is required' => sub {
         depends => [{name => 'dependency', version => '0.5'}]
     );
     $snapshot->mark_installed(
-        name       => 'dependency',
-        version    => '0.5',
-        depends    => [{name => 'other_dependency', version => '0.1'}],
+        name    => 'bar',
+        version => '1.0',
+    );
+    $snapshot->mark_installed(
+        name    => 'dependency',
+        version => '0.5',
+        depends => [
+            {name => 'other_dependency',                version => '0.1'},
+            {name => 'other_required_and_not_required', version => '0.1'}
+        ],
         dependency => 1
     );
     $snapshot->mark_installed(
@@ -118,14 +125,23 @@ subtest 'is_required: returns flag if package is required' => sub {
     $snapshot->mark_installed(
         name       => 'other_not_required',
         version    => '0.2',
+        dependency => 1,
+        depends =>
+          [{name => 'other_required_and_not_required', version => '0.1'}]
+    );
+    $snapshot->mark_installed(
+        name       => 'other_required_and_not_required',
+        version    => '0.1',
         dependency => 1
     );
 
     ok $snapshot->is_required('foo');
+    ok $snapshot->is_required('bar');
     ok $snapshot->is_required('dependency');
     ok $snapshot->is_required('other_dependency');
     ok !$snapshot->is_required('not_required');
     ok !$snapshot->is_required('other_not_required');
+    ok $snapshot->is_required('other_required_and_not_required');
 };
 
 subtest 'list_not_required: returns not required packages' => sub {
