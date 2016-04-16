@@ -90,6 +90,80 @@ subtest 'local_settings: returns local settings' => sub {
     is $snapshot->local_settings->{foo}, 'bar';
 };
 
+subtest 'is_required: returns flag if package is required' => sub {
+    my $snapshot = _build_snapshot();
+
+    $snapshot->mark_installed(
+        name    => 'foo',
+        version => '1.0',
+        depends => [{name => 'dependency', version => '0.5'}]
+    );
+    $snapshot->mark_installed(
+        name       => 'dependency',
+        version    => '0.5',
+        depends    => [{name => 'other_dependency', version => '0.1'}],
+        dependency => 1
+    );
+    $snapshot->mark_installed(
+        name       => 'other_dependency',
+        version    => '0.1',
+        dependency => 1
+    );
+    $snapshot->mark_installed(
+        name       => 'not_required',
+        version    => '1.0',
+        depends    => [{name => 'other_not_required', version => '0.2'}],
+        dependency => 1
+    );
+    $snapshot->mark_installed(
+        name       => 'other_not_required',
+        version    => '0.2',
+        dependency => 1
+    );
+
+    ok $snapshot->is_required('foo');
+    ok $snapshot->is_required('dependency');
+    ok $snapshot->is_required('other_dependency');
+    ok !$snapshot->is_required('not_required');
+    ok !$snapshot->is_required('other_not_required');
+};
+
+subtest 'list_not_required: returns not required packages' => sub {
+    my $snapshot = _build_snapshot();
+
+    $snapshot->mark_installed(
+        name    => 'foo',
+        version => '1.0',
+        depends => [{name => 'dependency', version => '0.5'}]
+    );
+    $snapshot->mark_installed(
+        name       => 'dependency',
+        version    => '0.5',
+        depends    => [{name => 'other_dependency', version => '0.1'}],
+        dependency => 1
+    );
+    $snapshot->mark_installed(
+        name       => 'other_dependency',
+        version    => '0.1',
+        dependency => 1
+    );
+    $snapshot->mark_installed(
+        name       => 'not_required',
+        version    => '1.0',
+        depends    => [{name => 'other_not_required', version => '0.2'}],
+        dependency => 1
+    );
+    $snapshot->mark_installed(
+        name       => 'other_not_required',
+        version    => '0.2',
+        dependency => 1
+    );
+
+    my @not_required = $snapshot->list_not_required;
+
+    is_deeply [sort @not_required], [qw/not_required other_not_required/];
+};
+
 done_testing;
 
 sub _build_snapshot {

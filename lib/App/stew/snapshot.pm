@@ -4,9 +4,12 @@ use strict;
 use warnings;
 
 use File::Spec   ();
+use List::Util qw(first);
 use Data::Dumper ();
 use Carp qw(croak);
-use App::stew::util qw(slurp_file write_file);
+use App::stew::util qw(error slurp_file write_file);
+
+my %CACHE_REQUIRED;
 
 sub new {
     my $class = shift;
@@ -59,6 +62,47 @@ sub get_package {
     my ($package) = @_;
 
     return $self->{snapshot}->{$package};
+}
+
+sub list_not_required {
+    my $self = shift;
+    my ($root) = @_;
+
+    return $self->list_not_required_of($root) if $root;
+
+    my @not_required;
+    foreach my $name (keys %{$self->{snapshot}}) {
+        push @not_required, $name unless $self->is_required($name);
+    }
+
+    return @not_required;
+}
+
+sub is_required {
+    my $self = shift;
+    my ($name) = @_;
+
+    my $info = $self->{snapshot}->{$name};
+    error 'unknown package' unless $info;
+
+    return $CACHE_REQUIRED{$name} if exists $CACHE_REQUIRED{$name};
+
+    return ($CACHE_REQUIRED{$name} = 1) unless $info->{dependency};
+
+    foreach my $dependant_name (keys %{$self->{snapshot}}) {
+        next if $name eq $dependant_name;
+
+        my $dependant_info = $self->{snapshot}->{$dependant_name};
+        next
+          unless $dependant_info->{depends}
+          && (my @depends = @{$dependant_info->{depends}});
+
+        if (my $depends = first { $name eq $_->{name} } @depends) {
+            return $self->is_required($dependant_name);
+        }
+    }
+
+    return ($CACHE_REQUIRED{$name} = 0);
 }
 
 sub load {
