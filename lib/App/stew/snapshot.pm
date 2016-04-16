@@ -75,6 +75,16 @@ sub list_not_required {
     return sort @not_required;
 }
 
+sub is_dependency {
+    my $self = shift;
+    my ($name) = @_;
+
+    my $info = $self->{snapshot}->{$name};
+    error 'unknown package' unless $info;
+
+    return !!$info->{dependency};
+}
+
 sub is_required {
     my $self = shift;
     my ($name) = @_;
