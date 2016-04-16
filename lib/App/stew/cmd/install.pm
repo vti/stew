@@ -143,7 +143,7 @@ sub run {
 
     App::stew::env->new(prefix => $ENV{PREFIX})->setup;
 
-    my $builder = App::stew::installer->new(
+    my $installer = App::stew::installer->new(
         base                  => $opt_base,
         root_dir              => $root_dir,
         build_dir             => $build_dir,
@@ -156,7 +156,7 @@ sub run {
     );
 
     foreach my $tree (@trees) {
-        $builder->build($tree);
+        $installer->install($tree);
     }
 
     $snapshot->local_settings->{os}   = $opt_os;

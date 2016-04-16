@@ -47,7 +47,7 @@ sub build {
         _chdir($work_dir);
 
         info sprintf "Checking dependencies...";
-        $self->_resolve_dependencies($stew, $stew_tree);
+        $self->_check_dependencies($stew, $stew_tree);
 
         my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
 
@@ -134,7 +134,7 @@ sub _run_stew_phase {
     cmd(@commands);
 }
 
-sub _resolve_dependencies {
+sub _check_dependencies {
     my $self = shift;
     my ($stew, $tree) = @_;
 
@@ -145,7 +145,7 @@ sub _resolve_dependencies {
     foreach my $tree (@depends) {
         my $stew = $tree->{stew};
 
-        die $stew->package . " is not installed\n"
+        die $stew->package . " is not up to date\n"
           unless $self->{snapshot}->is_up_to_date($stew->name, $stew->version);
     }
 }

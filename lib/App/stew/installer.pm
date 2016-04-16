@@ -33,7 +33,7 @@ sub new {
     return $self;
 }
 
-sub build {
+sub install {
     my $self = shift;
     my ($stew_tree, %options) = @_;
 
@@ -88,7 +88,7 @@ sub build {
         }
 
         info "Resolving dependencies...";
-        @depends = $self->_resolve_dependencies($stew, $stew_tree);
+        @depends = $self->_install_dependencies($stew, $stew_tree);
 
         if ($stew->is('cross-platform')) {
             info 'Cross platform package';
@@ -178,7 +178,7 @@ sub _install_from_binary {
     return _tree(".", ".");
 }
 
-sub _resolve_dependencies {
+sub _install_dependencies {
     my $self = shift;
     my ($stew, $tree) = @_;
 
@@ -193,7 +193,7 @@ sub _resolve_dependencies {
 
         _chdir($self->{root_dir});
 
-        $self->build($tree, satisfies => $stew);
+        $self->install($tree, satisfies => $stew);
 
         _chdir($self->{root_dir});
     }
