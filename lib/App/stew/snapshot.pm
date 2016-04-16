@@ -24,6 +24,14 @@ sub new {
     return $self;
 }
 
+sub local_settings {
+    my $self = shift;
+
+    $self->{snapshot}->{_} ||= {};
+
+    return $self->{snapshot}->{_};
+}
+
 sub is_installed {
     my $self = shift;
     my ($package) = @_;

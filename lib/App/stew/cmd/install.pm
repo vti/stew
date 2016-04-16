@@ -61,9 +61,6 @@ sub run {
         "cache"                 => \$opt_cache,
     ) or die "error";
 
-    $opt_os   //= App::stew::env->detect_os;
-    $opt_arch //= App::stew::env->detect_arch;
-
     error("--base is required") unless $opt_base;
     error("--repo is required") unless $opt_repo;
 
@@ -77,6 +74,14 @@ sub run {
     $ENV{STEW_LOG_LEVEL} = $opt_verbose ? 1 : 0;
     $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
     unlink $ENV{STEW_LOG_FILE};
+
+    my $snapshot = App::stew::snapshot->new(base => $opt_base);
+    $snapshot->load;
+
+    my $local_settings = $snapshot->local_settings;
+
+    $opt_os   //= $local_settings->{os} // App::stew::env->detect_os;
+    $opt_arch //= $local_settings->{arch} // App::stew::env->detect_arch;
 
     my $repo = App::stew::repo->new(
         path        => $opt_repo,
@@ -92,7 +97,11 @@ sub run {
 
     warn "Installing for '$platform'\n";
 
-    if (!$opt_force_platform && !$opt_from_source) {
+    if (   !$opt_force_platform
+        && !$opt_from_source
+        && !$local_settings->{os}
+        && !$local_settings->{arch})
+    {
         if (!$index->platform_available($opt_os, $opt_arch)) {
             my $platforms = $index->list_platforms;
 
@@ -106,9 +115,6 @@ sub run {
             error 'Fail to detect platform';
         }
     }
-
-    my $snapshot = App::stew::snapshot->new(base => $opt_base);
-    $snapshot->load;
 
     if (@argv == 1 && $argv[0] eq '.') {
         die 'stewfile not found' unless -f 'stewfile';
@@ -145,6 +151,10 @@ sub run {
     foreach my $tree (@trees) {
         $builder->build($tree);
     }
+
+    $snapshot->local_settings->{os}   = $opt_os;
+    $snapshot->local_settings->{arch} = $opt_arch;
+    $snapshot->store;
 
     info "Done";
 }

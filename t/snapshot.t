@@ -59,6 +59,17 @@ subtest 'mark_uninstalled: sets package to uninstalled' => sub {
     is $snapshot->is_installed('foo'), 0;
 };
 
+subtest 'local_settings: returns local settings' => sub {
+    my $snapshot = _build_snapshot();
+
+    $snapshot->local_settings->{foo} = 'bar';
+    $snapshot->store;
+
+    $snapshot->load;
+
+    is $snapshot->local_settings->{foo}, 'bar';
+};
+
 done_testing;
 
 sub _build_snapshot {
