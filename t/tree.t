@@ -14,8 +14,7 @@ subtest 'builds no deps tree' => sub {
     my $dump = $tree->build('single');
 
     ok ref $dump->{stew};
-    is_deeply $dump->{dependencies},      [];
-    is_deeply $dump->{make_dependencies}, [];
+    is_deeply $dump->{dependencies}, [];
 };
 
 subtest 'builds tree with deps' => sub {
@@ -25,7 +24,6 @@ subtest 'builds tree with deps' => sub {
 
     ok ref $dump->{stew};
     ok ref $dump->{dependencies}->[0]->{stew};
-    is_deeply $dump->{make_dependencies}, [];
 };
 
 subtest 'flattens deps' => sub {
@@ -66,7 +64,7 @@ sub _build_tree {
     my $index = _build_index(repo => $repo);
 
     return App::stew::tree->new(
-        repo => $repo,
+        repo  => $repo,
         index => $index,
         %params
     );
