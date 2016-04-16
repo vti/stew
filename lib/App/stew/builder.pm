@@ -46,7 +46,7 @@ sub build {
         _mkpath($work_dir);
         _chdir($work_dir);
 
-        info sprintf "Checking dependencies...", $stew->package;
+        info sprintf "Checking dependencies...";
         $self->_resolve_dependencies($stew, $stew_tree);
 
         my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
