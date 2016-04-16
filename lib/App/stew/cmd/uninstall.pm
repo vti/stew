@@ -22,14 +22,10 @@ sub run {
 
     my $opt_base;
     my $opt_prefix = 'local';
-    my $opt_repo;
-    my $opt_verbose;
     GetOptionsFromArray(
         \@argv,
         "base=s"   => \$opt_base,
-        "repo=s"   => \$opt_repo,
         "prefix=s" => \$opt_prefix,
-        "verbose"  => \$opt_verbose,
     ) or die "error";
 
     error("--base is required") unless $opt_base;

@@ -31,7 +31,7 @@ sub run {
 
     my $opt_base;
     my $opt_prefix = 'local';
-    my $opt_repo;
+    my $opt_repo   = $ENV{STEW_REPO};
     my $opt_force_platform;
     my $opt_os;
     my $opt_arch;
@@ -80,7 +80,7 @@ sub run {
 
     my $local_settings = $snapshot->local_settings;
 
-    $opt_os   //= $local_settings->{os} // App::stew::env->detect_os;
+    $opt_os   //= $local_settings->{os}   // App::stew::env->detect_os;
     $opt_arch //= $local_settings->{arch} // App::stew::env->detect_arch;
 
     my $repo = App::stew::repo->new(
