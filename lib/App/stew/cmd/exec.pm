@@ -3,21 +3,13 @@ package App::stew::cmd::exec;
 use strict;
 use warnings;
 
+use base 'App::stew::cmd::base';
+
 use Getopt::Long qw(GetOptionsFromArray);
 use Cwd qw(abs_path);
 use File::Spec;
 use App::stew::env;
 use App::stew::util qw(info debug error);
-
-sub new {
-    my $class = shift;
-    my (%params) = @_;
-
-    my $self = {};
-    bless $self, $class;
-
-    return $self;
-}
 
 sub run {
     my $self = shift;

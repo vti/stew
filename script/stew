@@ -3,36 +3,70 @@
 use strict;
 use warnings;
 
-use App::stew::util qw(error);
-use App::stew::cmd::install;
-use App::stew::cmd::build;
-use App::stew::cmd::list_installed;
-use App::stew::cmd::uninstall;
-use App::stew::cmd::autoremove;
-use App::stew::cmd::exec;
+use App::stew::cmdbuilder;
+use App::stew::rc;
 
 my $command = shift @ARGV;
 
-if (!$command) {
-}
-elsif ($command eq 'install') {
-    App::stew::cmd::install->new()->run(@ARGV);
-}
-elsif ($command eq 'build') {
-    App::stew::cmd::build->new()->run(@ARGV);
-}
-elsif ($command eq 'list-installed') {
-    App::stew::cmd::list_installed->new()->run(@ARGV);
-}
-elsif ($command eq 'uninstall') {
-    App::stew::cmd::uninstall->new()->run(@ARGV);
-}
-elsif ($command eq 'autoremove') {
-    App::stew::cmd::autoremove->new()->run(@ARGV);
-}
-elsif ($command eq 'exec') {
-    App::stew::cmd::exec->new()->run(@ARGV);
-}
-else {
-    error qq{Unknown command '$command'};
-}
+my $rc       = App::stew::rc->new->load;
+my $defaults = {%{$rc->{$command} || {}}, %{$rc->{_} || {}}};
+my @defaults = map { $_ => $defaults->{$_} } keys %$defaults;
+
+App::stew::cmdbuilder->new->build($command)->run(@defaults, @ARGV);
+
+__END__
+
+=head1 NAME
+
+stew - Stew your binaries
+
+=head1 SYNOPSIS
+
+stew [command] [options...]
+
+Available commands:
+
+   install         install package
+   uninstall       uninstall package
+   build           build package without installing
+   autoremove      remove not required dependencies
+   list-installed  list installed packages
+   exec            execute command in local environment
+   help            detailed command help
+
+=head1 COMMANDS
+
+=over 4
+
+=item B<install>
+
+See L<App::stew::cmd::install>.
+
+=item B<uninstall>
+
+See L<App::stew::cmd::uninstall>.
+
+=item B<build>
+
+See L<App::stew::cmd::build>.
+
+=item B<autoremove>
+
+See L<App::stew::cmd::autoremove>.
+
+=item B<list-installed>
+
+See L<App::stew::cmd::list_installed>.
+
+=item B<exec>
+
+See L<App::stew::cmd::exec>.
+
+=back
+
+=head1 DESCRIPTION
+
+B<stew> will read the given input file(s) and do something
+useful with the contents thereof.
+
+=cut

@@ -3,20 +3,12 @@ package App::stew::cmd::autoremove;
 use strict;
 use warnings;
 
+use base 'App::stew::cmd::base';
+
 use Getopt::Long qw(GetOptionsFromArray);
 use App::stew::snapshot;
 use App::stew::uninstaller;
 use App::stew::util qw(info);
-
-sub new {
-    my $class = shift;
-    my (%params) = @_;
-
-    my $self = {};
-    bless $self, $class;
-
-    return $self;
-}
 
 sub run {
     my $self = shift;

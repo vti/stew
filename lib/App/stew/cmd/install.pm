@@ -3,6 +3,8 @@ package App::stew::cmd::install;
 use strict;
 use warnings;
 
+use base 'App::stew::cmd::base';
+
 use Getopt::Long qw(GetOptionsFromArray);
 use Cwd qw(cwd abs_path);
 use File::Path qw(mkpath);
@@ -14,16 +16,6 @@ use App::stew::index;
 use App::stew::tree;
 use App::stew::env;
 use App::stew::util qw(info debug error slurp_file);
-
-sub new {
-    my $class = shift;
-    my (%params) = @_;
-
-    my $self = {};
-    bless $self, $class;
-
-    return $self;
-}
 
 sub run {
     my $self = shift;
@@ -167,3 +159,49 @@ sub run {
 }
 
 1;
+__END__
+
+=head1 NAME
+
+stew install - install package
+
+=head1 SYNOPSIS
+
+stew install [options ...]
+
+Options:
+
+    --base                   base directory
+    --prefix                 prefix (default 'local')
+    --repo                   path/URL to repository
+    --build                  build directory (default './build')
+
+    --reinstall              reinstall package
+    --from-source            force installing package from source
+    --from-source-recursive  force installing package and its dependencies from source
+
+    --force-platform         force detected platform
+    --os                     OS name (default autodetect)
+    --arch                   architecture (default autodetect)
+
+    --dry-run                do not really install anything
+    --keep-files             do not remove temporary files after installation
+    --cache                  use only cached files
+    --verbose                verbose mode
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--base>
+
+Print a brief help message and exits.
+
+=back
+
+=head1 DESCRIPTION
+
+B<This program> will read the given input file(s) and do something
+useful with the contents thereof.
+
+=cut
