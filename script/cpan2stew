@@ -8,7 +8,7 @@ use File::Basename qw(basename);
 use CPAN::FindDependencies;
 use HTTP::Tiny;
 
-my $cpan;
+my $cpan = 'cpan.org';
 GetOptions("cpan=s" => \$cpan,)
   or die("Error in command line arguments\n");
 
@@ -24,7 +24,7 @@ my $details_file     = basename $details_file_url;
 
 my $ua = HTTP::Tiny->new;
 
-print "Mirroring '$details_file'...\n";
+print "Mirroring '$details_file_url' -> '$details_file'...\n";
 my $response = $ua->mirror($details_file_url, $details_file);
 
 die "Failed: $response->{reason}: $response->{content}\n"
