@@ -6,17 +6,34 @@ use warnings;
 use Getopt::Long;
 use File::Basename qw(basename);
 use CPAN::FindDependencies;
+use File::Spec;
 use HTTP::Tiny;
+use Module::CPANfile;
 
 my $cpan = 'cpan.org';
-GetOptions("cpan=s" => \$cpan,)
-  or die("Error in command line arguments\n");
+my $repo;
+my $local;
+my $cpanfile;
+my $stewfile;
+GetOptions(
+    "cpan=s"     => \$cpan,
+    "repo=s"     => \$repo,
+    "cpanfile=s" => \$cpanfile,
+    "stewfile=s" => \$stewfile,
+    "local"      => \$local
+) or die("Error in command line arguments\n");
 
 die '--cpan is required' unless $cpan;
 
 $cpan = "http://$cpan" unless $cpan =~ m{^https?://};
 
 my @packages = @ARGV;
+if ($cpanfile) {
+    my $file    = Module::CPANfile->load($cpanfile);
+    my $prereqs = $file->prereqs->merged_requirements->as_string_hash;
+
+    push @packages, keys %$prereqs;
+}
 die "Usage: [options] <package1> <package2>\n" unless @packages;
 
 my $details_file_url = "$cpan/modules/02packages.details.txt.gz";
@@ -70,6 +87,12 @@ sub gen_tree {
     $tree{$module->distribution} = [];
     calc_deps(\%tree, $module, \@dependencies, 1);
 
+    if ($stewfile) {
+        open my $fh, '>>', $stewfile or die "Can't open stewfile: $!\n";
+        print $fh dist_to_pkg($module->distribution), "\n";
+        close $fh;
+    }
+
     foreach my $key (keys %tree) {
         my @deps = map { $index{$_} } @{$tree{$key} || []};
         gen_stew($index{$key}, @deps);
@@ -116,7 +139,27 @@ sub gen_stew {
 
     my $stew_file = "${pkg}_${version}.stew";
 
-    print "Generating $stew_file ...";
+    if ($repo) {
+        $stew_file = File::Spec->catfile($repo, 'stew', $stew_file);
+    }
+
+    print "Generating $stew_file ...\n";
+
+    my $dist_url = "$cpan/authors/id/$dist";
+
+    if ($local && $repo) {
+        my $local_path = File::Spec->catfile($repo, 'src', basename($dist));
+        print "Mirroring '$dist_url' -> '$local_path'\n";
+
+        my $response = $ua->mirror($dist_url, $local_path);
+        die "Failed: $response->{reason}: $response->{content}\n"
+          unless $response->{success};
+    }
+
+    my $options = '';
+    if (!$local) {
+        $options = qq{\$url     = "$dist_url";};
+    }
 
     open my $fh, '>', $stew_file or die $!;
     print $fh <<"EOF";
@@ -126,8 +169,8 @@ sub gen_stew {
 \$version = "$version";
 \$package = "\$name-\$version";
 \@depends = ('perl'$deps);
-\$url     = "$cpan/authors/id/$dist";
 \$file    = "$file";
+$options
 
 prepare {
     "tar xzf '\$file'"
