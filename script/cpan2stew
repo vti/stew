@@ -3,14 +3,36 @@
 use strict;
 use warnings;
 
+use Getopt::Long;
 use File::Basename qw(basename);
 use CPAN::FindDependencies;
+use HTTP::Tiny;
 
-my $details_file = '02packages.details.txt.gz';
+my $cpan;
+GetOptions("cpan=s" => \$cpan,)
+  or die("Error in command line arguments\n");
+
+die '--cpan is required' unless $cpan;
+
+$cpan = "http://$cpan" unless $cpan =~ m{^https?://};
+
+my @packages = @ARGV;
+die "Usage: [options] <package1> <package2>\n" unless @packages;
+
+my $details_file_url = "$cpan/modules/02packages.details.txt.gz";
+my $details_file     = basename $details_file_url;
+
+my $ua = HTTP::Tiny->new;
+
+print "Mirroring '$details_file'...\n";
+my $response = $ua->mirror($details_file_url, $details_file);
+
+die "Failed: $response->{reason}: $response->{content}\n"
+  unless $response->{success};
 
 my %seen;
 
-foreach my $name (@ARGV) {
+foreach my $name (@packages) {
     gen_tree($name);
 }
 
@@ -76,15 +98,17 @@ sub gen_stew {
 
     $seen{$module->name}++;
 
-    my $pkg       = dist_to_pkg($module->distribution);
-    my ($version) = $module->distribution =~ m/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$/;
+    my $pkg = dist_to_pkg($module->distribution);
+    my ($version) =
+      $module->distribution =~ m/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$/;
 
     if (!$version) {
         warn "Can't detect version from " . $module->distribution;
     }
 
-    my $dist      = $module->distribution;
-    my $deps = join ', ', map { "'$_'" } map { dist_to_pkg($_->distribution) } @deps;
+    my $dist = $module->distribution;
+    my $deps = join ', ',
+      map { "'$_'" } map { dist_to_pkg($_->distribution) } @deps;
     $deps = ', ' . $deps if $deps;
 
     my $file = basename($dist);
@@ -102,7 +126,7 @@ sub gen_stew {
 \$version = "$version";
 \$package = "\$name-\$version";
 \@depends = ('perl'$deps);
-\$url     = "http://cpan.cpan.org/stacks/6.4/authors/id/$dist";
+\$url     = "$cpan/authors/id/$dist";
 \$file    = "$file";
 
 prepare {
@@ -147,7 +171,7 @@ sub calc_deps {
 
     my $prev;
     while (my $dep = shift @$dependencies) {
-        next if $dep->distribution =~ m/perl-.*?\.tar\.gz$/;
+        next if $dep->distribution =~ m/perl-.*?\.tar\.(?:gz|bz2)$/;
 
         $tree->{$dep->distribution} ||= [];
 
