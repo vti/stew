@@ -31,13 +31,13 @@ sub build {
 
     my $stew = $self->_parse_stew($stew_file);
 
-    return [] if $params{seen}->{$stew_name};
-    $params{seen}->{$stew_name}++;
-
     my $tree = {
         stew         => $stew,
         dependencies => []
     };
+
+    return $tree if $params{seen}->{$stew_name};
+    $params{seen}->{$stew_name}++;
 
     my @depends = $stew->depends;
     foreach my $depends (@depends) {
