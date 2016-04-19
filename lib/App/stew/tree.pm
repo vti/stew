@@ -22,14 +22,17 @@ sub new {
 
 sub build {
     my $self = shift;
-    my ($stew_expr, $type) = @_;
+    my ($stew_expr, %params) = @_;
 
     my $stew_name = $self->{index}->resolve($stew_expr);
     error "Can't find package satisfying '$stew_expr'" unless $stew_name;
 
-    my $stew_file = $self->_download_stew($stew_name, $type);
+    my $stew_file = $self->_download_stew($stew_name);
 
-    my $stew = $self->_parse_stew($stew_file, $type);
+    my $stew = $self->_parse_stew($stew_file);
+
+    return [] if $params{seen}->{$stew_name};
+    $params{seen}->{$stew_name}++;
 
     my $tree = {
         stew         => $stew,
@@ -38,7 +41,7 @@ sub build {
 
     my @depends = $stew->depends;
     foreach my $depends (@depends) {
-        push @{$tree->{dependencies}}, $self->build($depends, 'depends');
+        push @{$tree->{dependencies}}, $self->build($depends, %params);
     }
 
     return $tree;
@@ -81,9 +84,9 @@ sub _download_stew {
 
 sub _parse_stew {
     my $self = shift;
-    my ($file, $type) = @_;
+    my ($file) = @_;
 
-    return App::stew::file->parse($file, $type);
+    return App::stew::file->parse($file);
 }
 
 1;
