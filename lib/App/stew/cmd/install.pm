@@ -72,6 +72,7 @@ sub run {
 
     my $local_settings = $snapshot->local_settings;
 
+    my $os_forced = !!$opt_os;
     $opt_os   //= $local_settings->{os}   // App::stew::env->detect_os;
     $opt_arch //= $local_settings->{arch} // App::stew::env->detect_arch;
 
@@ -89,7 +90,8 @@ sub run {
 
     warn "Installing for '$platform'\n";
 
-    if (   !$opt_force_platform
+    if (   !$os_forced
+        && !$opt_force_platform
         && !$opt_from_source
         && !$local_settings->{os}
         && !$local_settings->{arch})
