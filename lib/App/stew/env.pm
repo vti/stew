@@ -24,6 +24,12 @@ sub setup {
 
     my $prefix = $self->{prefix};
 
+    $ENV{PERL5LIB}            = "";
+    $ENV{PERL_LOCAL_LIB_ROOT} = "";
+    $ENV{PERL_MB_OPT}         = "--installdirs site";
+    $ENV{PERL_MM_OPT}         = "INSTALLDIRS=site";
+    $ENV{PERL_CPANM_OPT}      = "";
+
     _unshift_env(PATH => "$prefix/bin");
 
     _unshift_env(LIBPATH         => "$prefix/lib");
