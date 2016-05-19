@@ -35,7 +35,7 @@ subtest 'installs from source' => sub {
     $installer->install({stew => $stew});
 
     ok -f "$base_dir/local/foo";
-    ok -f "$base_dir/stew.snapshot";
+    ok -f "$base_dir/local/stew.snapshot";
 };
 
 subtest 'caches binary' => sub {
@@ -96,7 +96,7 @@ subtest 'installs from dist when available' => sub {
     $installer->install({stew => $stew});
 
     ok -f "$base_dir/local/foo";
-    ok -f "$base_dir/stew.snapshot";
+    ok -f "$base_dir/local/stew.snapshot";
 };
 
 done_testing;

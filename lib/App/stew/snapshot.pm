@@ -3,11 +3,12 @@ package App::stew::snapshot;
 use strict;
 use warnings;
 
-use File::Spec   ();
+use File::Spec ();
 use List::Util qw(first);
 use Data::Dumper ();
 use Carp qw(croak);
-use App::stew::util qw(error slurp_file write_file);
+use File::Basename qw(dirname);
+use App::stew::util qw(error slurp_file write_file _mkpath);
 
 my %CACHE_REQUIRED;
 
@@ -20,6 +21,8 @@ sub new {
 
     $self->{base} = $params{base};
     croak 'base is required' unless $self->{base};
+
+    $self->{prefix} = $params{prefix} || 'local';
 
     $self->{snapshot} = {};
     $self->load;
@@ -117,6 +120,7 @@ sub load {
     my $self = shift;
 
     my $install_file = $self->_install_file;
+    $install_file = $self->_install_file_old unless -e $install_file;
 
     my $installed = {};
     if (-e $install_file) {
@@ -154,12 +158,21 @@ sub mark_uninstalled {
 sub store {
     my $self = shift;
 
+    _mkpath(dirname($self->_install_file));
     write_file($self->_install_file, Data::Dumper::Dumper($self->{snapshot}));
+
+    unlink $self->_install_file_old;
 
     return $self;
 }
 
 sub _install_file {
+    my $self = shift;
+
+    return File::Spec->catfile($self->{base}, $self->{prefix}, 'stew.snapshot');
+}
+
+sub _install_file_old {
     my $self = shift;
 
     return File::Spec->catfile($self->{base}, 'stew.snapshot');

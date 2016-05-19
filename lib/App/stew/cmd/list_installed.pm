@@ -22,12 +22,17 @@ sub run {
     my (@argv) = @_;
 
     my $opt_base;
-    GetOptionsFromArray(\@argv, "base=s" => \$opt_base)
-      or die "error";
+    my $opt_prefix;
+    GetOptionsFromArray(
+        \@argv,
+        "base=s"   => \$opt_base,
+        "prefix=s" => \$opt_prefix
+    ) or die "error";
 
     error("--base is required") unless $opt_base;
 
-    my $snapshot = App::stew::snapshot->new(base => $opt_base)->load;
+    my $snapshot =
+      App::stew::snapshot->new(base => $opt_base, prefix => $opt_prefix)->load;
 
     foreach my $key (sort keys %$snapshot) {
         next if $key eq '_';

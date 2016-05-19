@@ -67,14 +67,14 @@ sub run {
     $ENV{STEW_LOG_FILE} = "$build_dir/stew.log";
     unlink $ENV{STEW_LOG_FILE};
 
-    my $snapshot = App::stew::snapshot->new(base => $opt_base);
+    my $snapshot = App::stew::snapshot->new(base => $opt_base, prefix => $opt_prefix);
     $snapshot->load;
 
     my $local_settings = $snapshot->local_settings;
 
     my $os_forced = !!$opt_os;
-    $opt_os   //= $local_settings->{os}   // App::stew::env->detect_os;
-    $opt_arch //= $local_settings->{arch} // App::stew::env->detect_arch;
+    $opt_os   ||= $local_settings->{os}   || App::stew::env->detect_os;
+    $opt_arch ||= $local_settings->{arch} || App::stew::env->detect_arch;
 
     my $repo = App::stew::repo->new(
         path        => $opt_repo,

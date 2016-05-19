@@ -47,7 +47,8 @@ sub detect_os {
     my $os = $self->_osname;
 
     if ($os eq 'linux') {
-        my $dist_name = Linux::Distribution::distribution_name() // 'generic';
+
+        my $dist_name = Linux::Distribution::distribution_name() || 'generic';
         my $dist_version = eval { Linux::Distribution::distribution_version() };
 
         if ($dist_version && $dist_version =~ m/^(\d+(?:\.\d+)?)/) {
@@ -89,7 +90,7 @@ sub detect_arch {
 
     my $arch;
 
-    chomp($arch //= `uname -m`);
+    chomp($arch ||= `uname -m`);
     $arch = lc $arch;
 
     return $arch;

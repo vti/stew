@@ -26,7 +26,7 @@ sub run {
 
     error("--base is required") unless $opt_base;
 
-    my $snapshot = App::stew::snapshot->new(base => $opt_base);
+    my $snapshot = App::stew::snapshot->new(base => $opt_base, prefix => $opt_prefix);
     $snapshot->load;
 
     my $uninstaller =

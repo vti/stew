@@ -38,8 +38,8 @@ sub run {
         "verbose"     => \$opt_verbose,
     ) or die "error";
 
-    $opt_os   //= App::stew::env->detect_os;
-    $opt_arch //= App::stew::env->detect_arch;
+    $opt_os   ||= App::stew::env->detect_os;
+    $opt_arch ||= App::stew::env->detect_arch;
 
     error("--base is required") unless $opt_base;
     error("--repo is required") unless $opt_repo;
@@ -64,7 +64,7 @@ sub run {
 
     my $index = App::stew::index->new(repo => $repo);
 
-    my $snapshot = App::stew::snapshot->new(base => $opt_base);
+    my $snapshot = App::stew::snapshot->new(base => $opt_base, prefix => $opt_prefix);
     $snapshot->load;
 
     my @trees;
