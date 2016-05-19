@@ -5,7 +5,7 @@ use warnings;
 
 use File::Spec ();
 use List::Util qw(first);
-use Data::Dumper ();
+use YAML::Tiny ();
 use Carp qw(croak);
 use File::Basename qw(dirname);
 use App::stew::util qw(error slurp_file write_file _mkpath);
@@ -124,8 +124,15 @@ sub load {
 
     my $installed = {};
     if (-e $install_file) {
-        no strict;
-        $installed = eval slurp_file($install_file);
+        my $content = slurp_file($install_file);
+
+        if ($content =~ m/^\$VAR1 = /) {
+            no strict;
+            $installed = eval $content;
+        }
+        else {
+            $installed = YAML::Tiny::Load($content);
+        }
     }
 
     $self->{snapshot} = $installed;
@@ -159,7 +166,7 @@ sub store {
     my $self = shift;
 
     _mkpath(dirname($self->_install_file));
-    write_file($self->_install_file, Data::Dumper::Dumper($self->{snapshot}));
+    write_file($self->_install_file, YAML::Tiny::Dump($self->{snapshot}));
 
     unlink $self->_install_file_old;
 
