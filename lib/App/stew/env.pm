@@ -32,9 +32,9 @@ sub setup {
 
     _unshift_env(PATH => "$prefix/bin");
 
-    _unshift_env(LIBPATH         => "$prefix/lib");
-    _unshift_env(LIBRARY_PATH    => "$prefix/lib");
-    _unshift_env(LD_LIBRARY_PATH => "$prefix/lib");
+    _unshift_env(LIBPATH         => "$prefix/lib:$prefix/lib64");
+    _unshift_env(LIBRARY_PATH    => "$prefix/lib:$prefix/lib64");
+    _unshift_env(LD_LIBRARY_PATH => "$prefix/lib:$prefix/lib64");
 
     _unshift_env(CPATH              => "$prefix/include");
     _unshift_env(C_INCLUDE_PATH     => "$prefix/include");
