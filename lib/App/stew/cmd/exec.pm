@@ -31,7 +31,7 @@ sub run {
 
     App::stew::env->new(prefix => $prefix)->setup;
 
-    system(@argv);
+    exec(@argv);
 }
 
 1;
