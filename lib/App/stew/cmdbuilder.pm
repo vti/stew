@@ -34,15 +34,7 @@ sub build {
     my $offset = max map { length } @COMMANDS;
 
     if (!$command || !first { $_ eq $command } @COMMANDS) {
-pod2usage();
-        #die "Available commands:\n\n" . join(
-            #"\n",
-            #map {
-                    #"    $_  "
-                  #. (' ' x ($offset - length $_))
-                  #. $self->_command_to_class($_)->help
-            #} @COMMANDS
-        #) . "\n\nRun 'stew <command> help' for more information\n\n";
+        pod2usage();
     }
 
     return $self->_command_to_class($command)->new;
