@@ -9,7 +9,7 @@ use App::stew::rc;
 my $command = shift @ARGV;
 
 my $rc       = App::stew::rc->new->load;
-my $defaults = {%{$rc->{$command} || {}}, %{$rc->{_} || {}}};
+my $defaults = $command ? {%{$rc->{$command} || {}}, %{$rc->{_} || {}}} : {};
 my @defaults = map { $_ => $defaults->{$_} } keys %$defaults;
 
 App::stew::cmdbuilder->new->build($command)->run(@defaults, @ARGV);
