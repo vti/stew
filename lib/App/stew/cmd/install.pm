@@ -35,6 +35,7 @@ sub run {
     my $opt_reinstall;
     my $opt_keep_files;
     my $opt_cache;
+    my $opt_help;
     GetOptionsFromArray(
         \@argv,
         "base=s"                => \$opt_base,
@@ -51,10 +52,21 @@ sub run {
         "reinstall"             => \$opt_reinstall,
         "keep-files"            => \$opt_keep_files,
         "cache"                 => \$opt_cache,
+        "help"                  => \$opt_help,
     ) or die "error";
+
+    if ($opt_help) {
+        App::stew::cmd::help->new->run('install');
+        return;
+    }
 
     error("--base is required") unless $opt_base;
     error("--repo is required") unless $opt_repo;
+
+    if (!@argv) {
+        info 'Nothing to install';
+        return;
+    }
 
     mkpath($opt_base);
     $opt_base = abs_path($opt_base);
@@ -101,10 +113,15 @@ sub run {
 
             warn "Platform '$platform' is not available. "
               . "Maybe you want --from-source or --force-platform?\n";
-            warn "Available platforms are: \n\n";
-            warn join("\n",
-                map { "    --os $_->{os} --arch $_->{arch}" } @$platforms)
-              . "\n\n";
+            if (@$platforms) {
+                warn "Available platforms are: \n\n";
+                warn join("\n",
+                    map { "    --os $_->{os} --arch $_->{arch}" } @$platforms)
+                  . "\n\n";
+            }
+            else {
+                warn "No platforms available\n\n";
+            }
 
             error 'Fail to detect platform';
         }
@@ -119,6 +136,8 @@ sub run {
     my @trees;
     foreach my $package (@argv) {
         my $resolved = $index->resolve($package);
+
+        error sprintf "Unknown package '%s'", $package unless $resolved;
 
         if (!$opt_reinstall && $snapshot->is_up_to_date($resolved)) {
             info sprintf "'%s' is up to date", $resolved;

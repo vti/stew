@@ -4,7 +4,6 @@ use strict;
 use warnings;
 
 use Config;
-use Linux::Distribution;
 use App::stew::util qw(debug error slurp_file);
 
 sub new {
@@ -47,6 +46,7 @@ sub detect_os {
     my $os = $self->_osname;
 
     if ($os eq 'linux') {
+        require Linux::Distribution;
 
         my $dist_name = Linux::Distribution::distribution_name() || 'generic';
         my $dist_version = eval { Linux::Distribution::distribution_version() };

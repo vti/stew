@@ -42,7 +42,7 @@ sub info {
 
 sub error {
     _log(@_);
-    croak("ERROR: " . join(' ', @_));
+    die("ERROR: " . join(' ', @_) . "\n");
 }
 
 sub _chdir {
