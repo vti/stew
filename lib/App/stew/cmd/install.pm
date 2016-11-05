@@ -133,6 +133,10 @@ sub run {
         @argv = grep { $_ && !/^#/ } split /\n+/, slurp_file('stewfile');
     }
 
+    $ENV{STEW_OS}   = $opt_os;
+    $ENV{STEW_ARCH} = $opt_arch;
+    $ENV{PREFIX}    = File::Spec->catfile($opt_base, $opt_prefix);
+
     my @trees;
     foreach my $package (@argv) {
         my $resolved = $index->resolve($package);
@@ -149,10 +153,6 @@ sub run {
 
         push @trees, $dump;
     }
-
-    $ENV{STEW_OS}   = $opt_os;
-    $ENV{STEW_ARCH} = $opt_arch;
-    $ENV{PREFIX}    = File::Spec->catfile($opt_base, $opt_prefix);
 
     App::stew::env->new(prefix => $ENV{PREFIX})->setup;
 

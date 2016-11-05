@@ -3,7 +3,8 @@ package App::stew::file;
 use strict;
 use warnings;
 
-use App::stew::util qw(slurp_file error);
+use YAML::Tiny ();
+use App::stew::util qw(slurp_file error listify);
 
 my %CACHE;
 
@@ -23,6 +24,10 @@ sub parse {
     return $CACHE{"$stew_file"} if $CACHE{"$stew_file"};
 
     my $content = slurp_file($stew_file);
+
+    if ($content =~ m/^---/) {
+        $content = $class->_parse_yaml($content);
+    }
 
     my $stew_class = $class->_sandbox($stew_file, $content);
     my $stew = $stew_class->new;
@@ -72,7 +77,6 @@ sub _sandbox {
     sub os      { \@os }
 
     my \$phases = {};
-    sub download(&) { \$phases->{download} = shift }
     sub prepare(&)  { \$phases->{prepare}  = shift }
     sub build(&)    { \$phases->{build}    = shift }
     sub install(&)  { \$phases->{install}  = shift }
@@ -115,4 +119,89 @@ sub _rand_str {
     return $str;
 }
 
+sub _parse_yaml {
+    my $class = shift;
+    my ($content) = @_;
+
+    my $yaml = YAML::Tiny->read_string($content);
+    $yaml = $yaml->[0];
+
+    $yaml->{PREFIX}  = '$ENV{PREFIX}';
+    $yaml->{DESTDIR} = '$ENV{DESTDIR}';
+    $yaml->{OS}      = $ENV{STEW_OS};
+    $yaml->{ARCH}    = $ENV{STEW_ARCH};
+
+    $yaml = _walk(
+        $yaml,
+        sub {
+            return unless defined $_[0];
+
+            $_[0] =~ s/\$\{([_a-zA-Z0-9]+)\}/defined $yaml->{$1} ? $yaml->{$1} : ''/ge;
+
+            return $_[0];
+        }
+    );
+
+    $content = '';
+
+    for my $key (qw/name version package/) {
+        if (my $value = $yaml->{$key}) {
+            $content .= qq{\$$key = "$value";\n};
+        }
+    }
+
+    my @sources = listify $yaml->{sources};
+    if (@sources == 1) {
+        $content .= qq{\$file = "$sources[0]";\n};
+    }
+    else {
+        $content .=
+          qq{\$files = ("} . join(', ', map { qq{"$_"} } @sources) . qq{");\n};
+    }
+
+    if (my $depends = $yaml->{depends}) {
+        my @depends = listify $depends;
+
+        $content .=
+            qq{\@depends = (}
+          . join(', ', map { qq{"$_"} } @depends)
+          . qq{);\n};
+    }
+
+    foreach my $phase (qw/prepare build install cleanup/) {
+        if (my $commands = $yaml->{$phase}) {
+            $content .= "$phase {\n";
+            $content .= join(",\n", map { s/^\s+//; s/\s+$//; qq{    "$_"} } @$commands);
+            $content .= "\n};\n";
+        }
+    }
+
+    return $content;
+}
+
+sub _walk {
+    my ($tree, $cb) = @_;
+
+    unless (ref $tree) {
+        $tree = $cb->($tree);
+        return $tree;
+    }
+
+    if (ref $tree eq 'HASH') {
+        foreach my $key (keys %$tree) {
+            $tree->{$key} = _walk($tree->{$key}, $cb);
+        }
+        return $tree;
+    }
+    elsif (ref $tree eq 'ARRAY') {
+        foreach my $value (@$tree) {
+            $value = _walk($value, $cb);
+        }
+        return $tree;
+    }
+    else {
+        die 'Unexpected ref=' . ref($tree);
+    }
+
+}
 1;

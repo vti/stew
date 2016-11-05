@@ -1,0 +1,96 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use File::Copy qw(move);
+use App::stew::file;
+
+foreach my $file (@ARGV) {
+    my $content = do { local $/; open my $fh, '<', $file or die $!; <$fh> };
+
+    next if $content =~ m/^---/;
+
+    move("$file", "$file.bak");
+
+    local $ENV{PREFIX}    = '${PREFIX}';
+    local $ENV{DESTDIR}   = '${DESTDIR}';
+    local $ENV{STEW_OS}   = '${OS}';
+    local $ENV{STEW_ARCH} = '${ARCH}';
+
+    my $stew = App::stew::file->new->parse("$file.bak");
+
+    my $yaml = "---\n";
+
+    my $name    = $stew->name;
+    my $version = $stew->version;
+
+    $yaml .= "name: $name\n";
+    $yaml .= "version: $version\n";
+
+    my $package;
+    if ($package = $stew->package) {
+        $package =~ s{^$name}{\$\{name\}};
+        $package =~ s{$version$}{\$\{version\}};
+        $yaml .= "package: $package\n";
+    }
+
+    my @all_files;
+    if (my $file = $stew->file) {
+        push @all_files, $file;
+    }
+
+    if (my @files = $stew->files) {
+        push @all_files, @files;
+    }
+
+    if (@all_files) {
+        foreach my $source (@all_files) {
+            $source =~ s{^$name}{\$\{name\}};
+            $source =~ s{$version}{\$\{version\}};
+            $source =~ s{\Q$package\E}{\$\{package\}};
+        }
+
+        $yaml .= "sources:\n";
+        $yaml .= join("\n", map { "    - $_" } @all_files);
+        $yaml .= "\n";
+    }
+
+    if (my @depends = $stew->depends) {
+        $yaml .= "depends:\n";
+        $yaml .= join("\n", map { "    - $_" } @depends);
+        $yaml .= "\n";
+    }
+
+    foreach my $phase (qw/prepare build install cleanup/) {
+        if (my $cmd = $stew->phase($phase)) {
+            my @commands = $cmd->();
+
+            foreach my $command (@commands) {
+                $command =~ s{$name}{\$\{name\}};
+                $command =~ s{$version}{\$\{version\}};
+                $command =~ s{\Q$package\E}{\$\{package\}};
+            }
+
+            $yaml .= "$phase:\n";
+            $yaml .= join("\n", map { "    - " . _command($_) } @commands);
+            $yaml .= "\n";
+        }
+    }
+
+    open my $fh, '>', $file or die $!;
+    print $fh $yaml;
+    close $fh;
+}
+
+sub _command {
+    my ($command) = @_;
+
+    return $command unless $command =~ m/\n/;
+
+    $command =~ s{\s*\\$}{}gms;
+
+    my @lines = split /\r?\n/, $command;
+
+    return ">\n    " . join("\n", map { "    $_" } @lines);
+}

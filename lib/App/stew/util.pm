@@ -5,7 +5,23 @@ use warnings;
 
 use base 'Exporter';
 
-our @EXPORT_OK = qw(info debug error slurp_file write_file cmd _chdir _mkpath _rmtree _copy _unlink _tree _tree_diff sort_by_version);
+our @EXPORT_OK = qw(
+  info
+  debug
+  error
+  slurp_file
+  write_file
+  cmd
+  _chdir
+  _mkpath
+  _rmtree
+  _copy
+  _unlink
+  _tree
+  _tree_diff
+  sort_by_version
+  listify
+);
 
 use File::Find qw(find);
 use Carp qw(croak);
@@ -165,8 +181,10 @@ sub sort_by_version {
     foreach my $list (@list) {
         if ($list =~ m{^dist/}) {
             $packages{$list} = '';
-        } else {
-            my ($pkg, $v, $tail) = $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:[a-z]\d?)?)(\..*)/;
+        }
+        else {
+            my ($pkg, $v, $tail) =
+              $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:[a-z]\d?)?)(\..*)/;
 
             die "Can't parse $list" unless $pkg && $v && $tail;
 
@@ -182,6 +200,12 @@ sub sort_by_version {
     }
 
     return @sorted;
+}
+
+sub listify {
+    my ($value) = @_;
+
+    return ref $value eq 'ARRAY' ? @$value : ($value);
 }
 
 1;
