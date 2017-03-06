@@ -1,5 +1,7 @@
 #!/bin/sh
 
+export PERL5LIB=".:$PERL5LIB"
+
 cpanm -n --pp --installdeps . -L local
 cpanm -n --pp Getopt::Long Pod::Escapes Pod::Simple Pod::Find Pod::Usage HTTP::Tiny -L local
 
