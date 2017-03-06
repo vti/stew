@@ -184,7 +184,7 @@ sub sort_by_version {
         }
         else {
             my ($pkg, $v, $tail) =
-              $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:[a-z]\d?)?)(\..*)/;
+              $list =~ m/^(.*?)(\d+(?:\.\d+)*(?:_\d+)?(?:[a-z]\d?)?)(\..*)/;
 
             die "Can't parse $list" unless $pkg && $v && $tail;
 

@@ -53,6 +53,19 @@ subtest 'sort_by_version: sorts by version' => sub {
     is_deeply [sort_by_version('libjpg_9b.stew', 'libjpg_8b.stew')],
       ['libjpg_8b.stew', 'libjpg_9b.stew'];
 
+    is_deeply [
+        sort_by_version(
+            'libyaml-libyaml-perl_0.63_001.stew',
+            'libyaml-libyaml-perl_0.59.stew',
+            'libyaml-libyaml-perl_0.63.stew',
+        )
+      ],
+      [
+        'libyaml-libyaml-perl_0.59.stew',
+        'libyaml-libyaml-perl_0.63.stew',
+        'libyaml-libyaml-perl_0.63_001.stew'
+      ];
+
     is_deeply [sort_by_version('dist/linux-centos-7/x86', 'dist/linux-centos-6/x86')],
       ['dist/linux-centos-6/x86', 'dist/linux-centos-7/x86'];
 };
