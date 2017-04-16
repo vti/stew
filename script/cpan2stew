@@ -102,7 +102,7 @@ sub gen_tree {
 sub dist_to_pkg {
     my ($dist) = @_;
 
-    $dist =~ s/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$//;
+    $dist =~ s/-([0-9\._a-z\-]+)(?:\.tar\.gz|\.tgz)$//;
 
     $dist =~ s{.*/}{};
 
@@ -123,7 +123,7 @@ sub gen_stew {
 
     my $pkg = dist_to_pkg($module->distribution);
     my ($version) =
-      $module->distribution =~ m/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$/;
+      $module->distribution =~ m/-([0-9\._a-z\-]+)(?:\.tar\.gz|\.tgz)$/;
 
     if (!$version) {
         warn "Can't detect version from " . $module->distribution;
@@ -182,7 +182,7 @@ build {
     "export PERL_MM_USE_DEFAULT=1 MODULEBUILDRC=/dev/null PERL_AUTOINSTALL=--skipdeps",
     "export PERL5LIB=\$ENV{DESTDIR}/\$ENV{PREFIX}/lib/perl5/vendor_perl",
     (-f '$name/Build.PL' ? 'perl Build.PL' : 'perl Makefile.PL'),
-    (-f '$name/Build.PL' ? './Build' : 'make')
+    (-f '$name/Build.PL' ? 'perl Build' : 'make')
 };
 
 install {
@@ -191,7 +191,7 @@ install {
     "export PERL5LIB=\$ENV{DESTDIR}/\$ENV{PREFIX}/lib/perl5/vendor_perl",
     (
         -f '$name/Build.PL'
-        ? "./Build install --installdirs=vendor --destdir=\$ENV{DESTDIR}"
+        ? "perl Build install --installdirs=vendor --destdir=\$ENV{DESTDIR}"
         : "make install INSTALLDIRS=vendor DESTDIR=\$ENV{DESTDIR}"
     )
 };
