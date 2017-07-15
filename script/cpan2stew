@@ -9,6 +9,7 @@ use CPAN::FindDependencies;
 use File::Spec;
 use HTTP::Tiny;
 use Module::CPANfile;
+use CPAN::DistnameInfo;
 
 my $cpan = 'cpan.org';
 my $repo;
@@ -102,13 +103,14 @@ sub gen_tree {
 sub dist_to_pkg {
     my ($dist) = @_;
 
-    $dist =~ s/-([0-9\._a-z\-]+)(?:\.tar\.gz|\.tgz)$//;
+    my $info = CPAN::DistnameInfo->new($dist);
 
-    $dist =~ s{.*/}{};
-
-    my @parts = map { s/_/-/g; $_ } split /::/, $dist;
-
-    return 'lib' . join('-', map { lc } @parts) . '-perl';
+    return {
+        pkg     => 'lib' . lc($info->dist) . '-perl',
+        name    => $info->distvname,
+        file    => $info->filename,
+        version => $info->version
+    };
 }
 
 sub gen_stew {
@@ -121,23 +123,23 @@ sub gen_stew {
 
     $seen{$module->name}++;
 
-    my $pkg = dist_to_pkg($module->distribution);
-    my ($version) =
-      $module->distribution =~ m/-([0-9\._a-z\-]+)(?:\.tar\.gz|\.tgz)$/;
+    my $info = dist_to_pkg($module->distribution);
 
-    if (!$version) {
+    if (!$info->{version}) {
         warn "Can't detect version from " . $module->distribution;
     }
 
+    my $pkg     = $info->{pkg};
+    my $version = $info->{version};
+    my $name    = $info->{name};
+    my $file    = $info->{file};
+
     my $dist = $module->distribution;
     my $deps = join ', ',
-      map { "'$_'" } map { dist_to_pkg($_->distribution) } @deps;
+      map { "'$_'" } map { dist_to_pkg($_->distribution)->{pkg} } @deps;
     $deps = ', ' . $deps if $deps;
 
-    my $file = basename($dist);
-    my ($name) = $file =~ m/^(.*)(?:\.tar.gz|\.tgz)$/;
-
-    my $stew_file = "${pkg}_${version}.stew";
+    my $stew_file = "$info->{pkg}_$info->{version}.stew";
 
     if ($repo) {
         $stew_file = File::Spec->catfile($repo, 'stew', $stew_file);
