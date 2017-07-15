@@ -105,8 +105,11 @@ sub dist_to_pkg {
 
     my $info = CPAN::DistnameInfo->new($dist);
 
+    my $pkg = 'lib' . lc($info->dist) . '-perl';
+    $pkg =~ s{_}{-};
+
     return {
-        pkg     => 'lib' . lc($info->dist) . '-perl',
+        pkg     => $pkg,
         name    => $info->distvname,
         file    => $info->filename,
         version => $info->version
