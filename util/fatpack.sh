@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export PERL5LIB="local/lib/perl5:$PERL5LIB"
+export PERL5LIB=".:local/lib/perl5:$PERL5LIB"
 
 cpanm -q -n --pp --installdeps . -L local
 cpanm -q -n --pp --reinstall local::lib Getopt::Long Pod::Escapes Pod::Simple Pod::Find Pod::Usage HTTP::Tiny -L local

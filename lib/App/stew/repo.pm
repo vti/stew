@@ -190,7 +190,21 @@ sub mirror_file {
 
     if ($in =~ m/^http/) {
         my $ua = $self->{ua} || HTTP::Tiny->new;
-        $ua->mirror($in, $to);
+
+        my $response;
+        for (1 .. 3) {
+            $response = $ua->mirror($in, $to);
+
+            last if $response->{success};
+
+            last unless $response->{status} eq '599';
+
+            debug("Retrying because of $response->{reason}: $response->{content}...\n");
+        }
+
+        if (!$response->{success}) {
+            die "Mirroring '$in' to '$to_dir' failed\n";
+        }
     }
     else {
         error "File '$in' does not exist" unless -f $in;

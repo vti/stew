@@ -102,6 +102,68 @@ subtest 'correctly sorts packages' => sub {
       ];
 };
 
+subtest 'mirrors file' => sub {
+    my $from = tempdir(CLEANUP => 1);
+    my $to   = tempdir(CLEANUP => 1);
+
+    open my $fh, '>', "$from/file";
+    print $fh 'hihi';
+    close $fh;
+
+    my $repo = _build_repo(mirror_path => $to);
+
+    $repo->mirror_file("$from/file", $to);
+
+    ok -f "$to/file";
+};
+
+subtest 'mirrors http file' => sub {
+    my $to   = tempdir(CLEANUP => 1);
+
+    my $repo = _build_repo(mirror_path => $to, ua => _mock_ua());
+
+    $repo->mirror_file('http://sources.local/file', $to);
+
+    ok -f "$to/file";
+};
+
+subtest 'retries when http mirror fails' => sub {
+    my $to   = tempdir(CLEANUP => 1);
+
+    my $try = 0;
+
+    my $repo = _build_repo(
+        mirror_path => $to,
+        ua          => _mock_ua(
+            mirror => sub {
+                shift;
+                my ($url, $to) = @_;
+
+                if ($try == 0) {
+                    $try++;
+
+                    return {
+                        success => 0,
+                        status  => '599',
+                        reason  => 'Connection refused',
+                        content => 'Error'
+                    };
+                }
+
+                open my $fh, '>', $to or die $!;
+                print $fh 'haha';
+                close $fh;
+
+                return {success => 1};
+            }
+        )
+    );
+
+    $repo->mirror_file('http://sources.local/file', $to);
+
+    ok -f "$to/file";
+};
+
 done_testing;
 
 sub _mock_ua {
@@ -155,6 +217,10 @@ EOP
 </pre><hr></body>
 </html>
 EOP
+        },
+        'http://sources.local/file' => {
+            success => 1,
+            content => 'hihi'
         }
     };
 
@@ -165,6 +231,22 @@ EOP
             my ($url) = @_;
 
             return $pages->{$url} if exists $pages->{$url};
+
+            die "unknown url '$url'";
+        }
+    );
+    $ua->mock(
+        mirror => $params{mirror} || sub {
+            shift;
+            my ($url, $to) = @_;
+
+            if (defined(my $content = $pages->{$url})) {
+                open my $fh, '>', $to or die $!;
+                print $fh $content;
+                close $fh;
+
+                return {success => 1};
+            }
 
             die "unknown url '$url'";
         }
