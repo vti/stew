@@ -57,17 +57,24 @@ subtest 'sort_by_version: sorts by version' => sub {
         sort_by_version(
             'libyaml-libyaml-perl_0.63_001.stew',
             'libyaml-libyaml-perl_0.59.stew',
+            'libyaml-libyaml-perl_0.64.stew',
             'libyaml-libyaml-perl_0.63.stew',
         )
       ],
       [
         'libyaml-libyaml-perl_0.59.stew',
         'libyaml-libyaml-perl_0.63.stew',
-        'libyaml-libyaml-perl_0.63_001.stew'
+        'libyaml-libyaml-perl_0.63_001.stew',
+        'libyaml-libyaml-perl_0.64.stew',
       ];
 
     is_deeply [sort_by_version('dist/linux-centos-7/x86', 'dist/linux-centos-6/x86')],
       ['dist/linux-centos-6/x86', 'dist/linux-centos-7/x86'];
+
+    is_deeply [
+        sort_by_version('git_2.13.0.stew', 'git_2.14.1.stew', 'git_2.6.1.stew')
+      ],
+      ['git_2.6.1.stew', 'git_2.13.0.stew', 'git_2.14.1.stew',];
 };
 
 sub _write_file {

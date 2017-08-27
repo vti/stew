@@ -188,7 +188,23 @@ sub sort_by_version {
 
             die "Can't parse $list" unless $pkg && $v && $tail;
 
-            $packages{"$pkg$v"} = $tail;
+            my @parts = split /\./, $v;
+            foreach my $part (@parts) {
+                if ($part =~ m/^[0-9]+$/) {
+                    $part = sprintf '%03d', $part;
+                }
+                elsif ($part =~ m/_/) {
+                    my @subparts = split /_/, $part;
+
+                    $part = join '_',
+                      map { $_ =~ m/^[0-9]+$/ ? sprintf('%03d', $_) : $_ }
+                      @subparts;
+                }
+            }
+
+            my $sort_v = join '.', @parts;
+
+            $packages{"$pkg $sort_v"} = { sort_v => $sort_v, v => $v, tail => $tail };
         }
     }
 
@@ -196,7 +212,12 @@ sub sort_by_version {
 
     my @sorted;
     foreach my $package (@packages) {
-        push @sorted, "$package$packages{$package}";
+        my ($name, undef) = split / /, $package, 2;
+
+        my $tail = $packages{$package} ? $packages{$package}->{tail} : '';
+        my $v    = $packages{$package} ? $packages{$package}->{v}    : '';
+
+        push @sorted, "$name$v$tail";
     }
 
     return @sorted;
