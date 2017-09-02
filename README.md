@@ -24,14 +24,14 @@ App::stew - stew your dependencies!
     $ stew install --repo repo-stew .
 
     # Run your perl with your libraries in your own environment
-    $ stew exec perl -MGD -e ''
+    $ stew exec perl -V
 
 # DESCRIPTION
 
 `stew` is an in-app package manager.
 
 `stew` allows you to package not only CPAN dependencies, but actually your perl and/or any other system libraries. All the
-dependencies are installed into your project directory C<local/> by default. Shipping it to a deployment server is a no
+dependencies are installed into your project directory `local/` by default. Shipping it to a deployment server is a no
 brainer.
 
 `stew` infrustucture consists of `stew repository` with `stewfile`s, sources and binary packages and app's local
