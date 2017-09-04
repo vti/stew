@@ -147,7 +147,7 @@ sub mark_installed {
     my $name = delete $options{name};
 
     $self->{snapshot}->{$name} = {%options};
-    $self->store;
+    $self->store unless $options{fake};
 
     return $self;
 }

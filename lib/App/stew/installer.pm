@@ -87,6 +87,19 @@ sub install {
             }
         }
 
+        # This is to avoid recursive dependencies
+        $self->{snapshot}->mark_installed(
+            name    => $stew->name,
+            version => $stew->version,
+            files   => $tree,
+            depends => [
+                map { {name => $_->{stew}->name, version => $_->{stew}->version} }
+                  @depends
+            ],
+            $is_dependency ? (dependency => 1) : (),
+            fake => 1
+        );
+
         debug "Resolving dependencies...";
         @depends = $self->_install_dependencies($stew, $stew_tree);
 
