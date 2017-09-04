@@ -41,8 +41,6 @@ die "Usage: [options] <package1> <package2>\n" unless @packages;
 
 my $packages_index = create_packages_index($cpan);
 
-my %seen;
-
 foreach my $package (@packages) {
     print "Working on '$package'...\n";
 
@@ -55,31 +53,34 @@ foreach my $package (@packages) {
     next if $distribution->{distribution} eq 'perl';
 
     if (-f distribution_to_stewfile($distribution)) {
-        warn "Already done\n";
         next;
     }
 
-    print "$package -> $distribution->{distribution}-$distribution->{version}\n";
+    print
+      "$package -> $distribution->{distribution}-$distribution->{version}\n";
 
     gen_tree($distribution);
 }
 
+my %gen_tree_seen;
+
 sub gen_tree {
     my ($distribution) = @_;
 
-    if ($seen{ $distribution->{pathname} }) {
-        return;
-    }
-
-    $seen{ $distribution->{pathname} }++;
+    return if $gen_tree_seen{$distribution->{pathname}}++;
 
     my $dependencies = distribution_dependencies($distribution);
 
     foreach my $dependency (@$dependencies) {
+        if (-f distribution_to_stewfile($distribution)) {
+            next;
+        }
+
         gen_tree($dependency);
     }
 
-    warn "Generating stewfile for $distribution->{distribution}-$distribution->{version}\n";
+    warn
+"Generating stewfile for $distribution->{distribution}-$distribution->{version}\n";
 
     my $ok = gen_stew($distribution, $dependencies);
 
@@ -98,15 +99,20 @@ sub dist_to_pkg {
     return 'lib' . join('-', map { lc } @parts) . '-perl';
 }
 
+my %gen_stew_seen;
+
 sub gen_stew {
     my ($distribution, $dependencies) = @_;
+
+    return if $gen_stew_seen{$distribution->{pathname}}++;
 
     my $pkg     = dist_to_pkg($distribution->{distribution});
     my $version = $distribution->{version};
 
     my $dist     = $distribution->{distribution};
     my $pathname = $distribution->{pathname};
-    my $deps     = join ', ', map { "'$_'" } map { dist_to_pkg($_->{distribution}) } @$dependencies;
+    my $deps     = join ', ',
+      map { "'$_'" } map { dist_to_pkg($_->{distribution}) } @$dependencies;
     $deps = ', ' . $deps if $deps;
 
     my $file = basename($pathname);
@@ -224,11 +230,19 @@ sub distribution_dependencies {
         {
             content => JSON::encode_json(
                 {
-                    query  => { match_all => {} },
+                    query  => {match_all => {}},
                     filter => {
                         and => [
-                            { term => { version      => '' . $distribution->{version} } },
-                            { term => { distribution => $distribution->{distribution} } }
+                            {
+                                term =>
+                                  {version => '' . $distribution->{version}}
+                            },
+                            {
+                                term => {
+                                    distribution =>
+                                      $distribution->{distribution}
+                                }
+                            }
                         ]
                     },
                     size => 1
@@ -239,12 +253,14 @@ sub distribution_dependencies {
 
     my $result = JSON::decode_json($response->{content});
 
-    my $dependencies = $result->{hits}->{hits}->[0]->{_source}->{dependency};
+    my $runtime =
+      $result->{hits}->{hits}->[0]->{_source}->{metadata}->{prereqs}->{runtime}
+      ->{requires};
 
     my @dependencies;
     my %dependencies_seen;
-    foreach my $dep_name (@$dependencies) {
-        my $module = $packages_index->package($dep_name->{module});
+    foreach my $dep_name (sort keys %$runtime) {
+        my $module = $packages_index->package($dep_name);
         next unless $module;
 
         my $dist = $module->distribution->dist;
