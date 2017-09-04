@@ -48,7 +48,7 @@ sub install {
     if (  !$reinstall
         && $self->{snapshot}->is_up_to_date($stew->name, $stew->version))
     {
-        info sprintf "'%s' is up to date", $stew->package;
+        debug sprintf "'%s' is up to date", $stew->package;
         return;
     }
     elsif ($self->{snapshot}->is_installed($stew->name)) {
@@ -60,7 +60,7 @@ sub install {
 
     _mkpath($ENV{PREFIX});
 
-    info sprintf "Building & installing '%s'...", $stew->package;
+    debug sprintf "Building & installing '%s'...", $stew->package;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
     _rmtree $work_dir;
@@ -87,11 +87,11 @@ sub install {
             }
         }
 
-        info "Resolving dependencies...";
+        debug "Resolving dependencies...";
         @depends = $self->_install_dependencies($stew, $stew_tree);
 
         if ($stew->is('cross-platform')) {
-            info 'Cross platform package';
+            debug 'Cross platform package';
 
             my $builder = $self->_build_builder;
 
@@ -109,7 +109,7 @@ sub install {
             cmd("cp -Ra * $ENV{PREFIX}/");
         }
         elsif ($stew->is('meta')) {
-            info 'Meta package';
+            debug 'Meta package';
         }
         else {
             my $dist_path =
@@ -156,7 +156,7 @@ sub _install_from_binary {
     my $self = shift;
     my ($stew, $dist_path) = @_;
 
-    info sprintf "Installing '%s' from binaries '%s'...", $stew->package,
+    debug sprintf "Installing '%s' from binaries '%s'...", $stew->package,
       $dist_path;
 
     my $basename = basename $dist_path;
@@ -184,7 +184,7 @@ sub _install_dependencies {
 
     my @depends = @{$tree->{dependencies} || []};
     if (@depends) {
-        info "Found dependencies: "
+        debug "Found dependencies: "
           . join(', ', map { $_->{stew}->package } @depends);
     }
 

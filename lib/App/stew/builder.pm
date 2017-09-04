@@ -35,7 +35,7 @@ sub build {
 
     _mkpath($ENV{PREFIX});
 
-    info sprintf "Building '%s'...", $stew->package;
+    debug sprintf "Building '%s'...", $stew->package;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
 
@@ -46,7 +46,7 @@ sub build {
         _mkpath($work_dir);
         _chdir($work_dir);
 
-        info sprintf "Checking dependencies...";
+        debug sprintf "Checking dependencies...";
         $self->_check_dependencies($stew, $stew_tree);
 
         my $dist_path = $self->{repo}->mirror_dist_dest($stew->name, $stew->version);
@@ -61,7 +61,7 @@ sub build {
             _chdir($work_dir);
             cmd("tar czhf $dist_archive -C $dist_name/$ENV{PREFIX}/ .");
 
-            info sprintf "Saving '%s' as '$dist_path'...", $stew->package;
+            debug sprintf "Saving '%s' as '$dist_path'...", $stew->package;
             _mkpath(dirname $dist_path);
             _copy $dist_archive, $dist_path;
         }
@@ -107,16 +107,16 @@ sub _build_from_source {
         }
     }
 
-    info sprintf "Preparing '%s'...", $stew->package;
+    debug sprintf "Preparing '%s'...", $stew->package;
     $self->_run_stew_phase($stew, 'prepare');
 
-    info sprintf "Building '%s'...", $stew->package;
+    debug sprintf "Building '%s'...", $stew->package;
     $self->_run_stew_phase($stew, 'build');
 
-    info sprintf "Installing '%s'...", $stew->package;
+    debug sprintf "Installing '%s'...", $stew->package;
     $self->_run_stew_phase($stew, 'install');
 
-    info sprintf "Cleaning '%s'...", $stew->package;
+    debug sprintf "Cleaning '%s'...", $stew->package;
     $self->_run_stew_phase($stew, 'cleanup');
 
     _chdir "$ENV{DESTDIR}/$ENV{PREFIX}";
