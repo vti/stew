@@ -3,12 +3,13 @@
 use strict;
 use warnings;
 
+use JSON ();
 use Getopt::Long;
 use File::Basename qw(basename);
-use CPAN::FindDependencies;
+use CPAN::DistnameInfo;
+use Parse::CPAN::Packages::Fast;
 use File::Spec;
 use HTTP::Tiny;
-use Module::CPANfile;
 
 my $cpan = 'cpan.org';
 my $repo;
@@ -29,6 +30,8 @@ $cpan = "http://$cpan" unless $cpan =~ m{^https?://};
 
 my @packages = @ARGV;
 if ($cpanfile) {
+    require Module::CPANfile;
+
     my $file    = Module::CPANfile->load($cpanfile);
     my $prereqs = $file->prereqs->merged_requirements->as_string_hash;
 
@@ -36,121 +39,89 @@ if ($cpanfile) {
 }
 die "Usage: [options] <package1> <package2>\n" unless @packages;
 
-my $details_file_url = "$cpan/modules/02packages.details.txt.gz";
-my $details_file     = basename $details_file_url;
-
-my $ua = HTTP::Tiny->new;
-
-print "Mirroring '$details_file_url' -> '$details_file'...\n";
-my $response = $ua->mirror($details_file_url, $details_file);
-
-die "Failed: $response->{reason}: $response->{content}\n"
-  unless $response->{success};
+my $packages_index = create_packages_index($cpan);
 
 my %seen;
 
-foreach my $name (@packages) {
-    gen_tree($name);
+foreach my $package (@packages) {
+    print "Working on '$package'...\n";
+
+    my $distribution = resolve_package($package);
+    if (!$distribution) {
+        warn "Cannot resolve $package\n";
+        next;
+    }
+
+    next if $distribution->{distribution} eq 'perl';
+
+    if (-f distribution_to_stewfile($distribution)) {
+        warn "Already done\n";
+        next;
+    }
+
+    print "$package -> $distribution->{distribution}-$distribution->{version}\n";
+
+    gen_tree($distribution);
 }
 
 sub gen_tree {
-    my ($name) = @_;
+    my ($distribution) = @_;
 
-    if ($seen{$name}) {
-        warn sprintf 'Skipping %s...', $name;
+    if ($seen{ $distribution->{pathname} }) {
         return;
     }
 
-    print "Working on '$name'...\n";
+    $seen{ $distribution->{pathname} }++;
 
-    my %modules;
+    my $dependencies = distribution_dependencies($distribution);
 
-    my @dependencies = CPAN::FindDependencies::finddeps(
-        $name,
-        '02packages' => $details_file,
-        nowarnings   => 1
-    );
-
-    if (!@dependencies) {
-        warn "Can't find module '$name'";
-        return;
+    foreach my $dependency (@$dependencies) {
+        gen_tree($dependency);
     }
 
-    warn sprintf "Found %d dependencies\n", scalar(@dependencies);
+    warn "Generating stewfile for $distribution->{distribution}-$distribution->{version}\n";
 
-    my %index;
-    foreach my $dep (@dependencies) {
-        $index{$dep->distribution} = $dep;
-    }
+    my $ok = gen_stew($distribution, $dependencies);
 
-    my $module = shift @dependencies;
-
-    my %tree;
-    $tree{$module->distribution} = [];
-    calc_deps(\%tree, $module, \@dependencies, 1);
-
-    if ($stewfile) {
+    if ($ok && $stewfile) {
         open my $fh, '>>', $stewfile or die "Can't open stewfile: $!\n";
-        print $fh dist_to_pkg($module->distribution), "\n";
+        print $fh dist_to_pkg($distribution->{distribution}), "\n";
         close $fh;
-    }
-
-    foreach my $key (keys %tree) {
-        my @deps = map { $index{$_} } @{$tree{$key} || []};
-        gen_stew($index{$key}, @deps);
     }
 }
 
 sub dist_to_pkg {
     my ($dist) = @_;
 
-    $dist =~ s/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$//;
-
-    $dist =~ s{.*/}{};
-
-    my @parts = map { s/_/-/g; $_ } split /::/, $dist;
+    my @parts = map { s/_/-/g; $_ } split /-/, $dist;
 
     return 'lib' . join('-', map { lc } @parts) . '-perl';
 }
 
 sub gen_stew {
-    my ($module, @deps) = @_;
+    my ($distribution, $dependencies) = @_;
 
-    if ($seen{$module->name}) {
-        warn sprintf 'Skipping %s...', $module->name;
-        return;
-    }
+    my $pkg     = dist_to_pkg($distribution->{distribution});
+    my $version = $distribution->{version};
 
-    $seen{$module->name}++;
-
-    my $pkg = dist_to_pkg($module->distribution);
-    my ($version) =
-      $module->distribution =~ m/-([0-9\._a-z]+)(?:\.tar\.gz|\.tgz)$/;
-
-    if (!$version) {
-        warn "Can't detect version from " . $module->distribution;
-    }
-
-    my $dist = $module->distribution;
-    my $deps = join ', ',
-      map { "'$_'" } map { dist_to_pkg($_->distribution) } @deps;
+    my $dist     = $distribution->{distribution};
+    my $pathname = $distribution->{pathname};
+    my $deps     = join ', ', map { "'$_'" } map { dist_to_pkg($_->{distribution}) } @$dependencies;
     $deps = ', ' . $deps if $deps;
 
-    my $file = basename($dist);
+    my $file = basename($pathname);
     my ($name) = $file =~ m/^(.*)(?:\.tar.gz|\.tgz)$/;
 
-    my $stew_file = "${pkg}_${version}.stew";
-
-    if ($repo) {
-        $stew_file = File::Spec->catfile($repo, 'stew', $stew_file);
-    }
+    my $stew_file = distribution_to_stewfile($distribution);
 
     print "Generating $stew_file ...\n";
 
-    my $dist_url = "$cpan/authors/id/$dist";
+    my $dist_url = "$cpan/authors/id/$pathname";
 
     if ($local && $repo) {
-        my $local_path = File::Spec->catfile($repo, 'src', basename($dist));
+        my $ua = HTTP::Tiny->new;
+
+        my $local_path = File::Spec->catfile($repo, 'src', basename($pathname));
         print "Mirroring '$dist_url' -> '$local_path'\n";
 
         my $response = $ua->mirror($dist_url, $local_path);
@@ -209,29 +180,100 @@ EOF
     close $fh;
 
     print "ok\n";
+
+    return 1;
 }
 
-sub calc_deps {
-    my ($tree, $module, $dependencies, $depth) = @_;
+sub resolve_package {
+    my ($package) = @_;
 
-    my $prev;
-    while (my $dep = shift @$dependencies) {
-        next if $dep->distribution =~ m/perl-.*?\.tar\.(?:gz|bz2)$/;
+    my $info = $packages_index->package($package);
+    return unless $info;
 
-        $tree->{$dep->distribution} ||= [];
+    return {
+        package      => $info->package,
+        distribution => $info->distribution->dist,
+        version      => $info->distribution->version,
+        pathname     => $info->distribution->pathname,
+    };
+}
 
-        if ($dep->depth < $depth) {
-            unshift @$dependencies, $dep;
-            return;
+sub create_packages_index {
+    my ($cpan) = @_;
+
+    my $details_file_url = "$cpan/modules/02packages.details.txt.gz";
+    my $details_file     = basename $details_file_url;
+
+    my $ua = HTTP::Tiny->new;
+
+    print "Mirroring '$details_file_url' -> '$details_file'...\n";
+    my $response = $ua->mirror($details_file_url, $details_file);
+
+    die "Failed: $response->{reason}: $response->{content}\n"
+      unless $response->{success};
+
+    return Parse::CPAN::Packages::Fast->new($details_file);
+}
+
+sub distribution_dependencies {
+    my ($distribution) = @_;
+
+    my $ua       = HTTP::Tiny->new;
+    my $response = $ua->post(
+        'http://fastapi.metacpan.org/v1/release/_search',
+        {
+            content => JSON::encode_json(
+                {
+                    query  => { match_all => {} },
+                    filter => {
+                        and => [
+                            { term => { version      => '' . $distribution->{version} } },
+                            { term => { distribution => $distribution->{distribution} } }
+                        ]
+                    },
+                    size => 1
+                }
+            )
         }
-        elsif ($dep->depth == $depth) {
-            push @{$tree->{$module->distribution}}, $dep->distribution;
-        }
-        else {
-            unshift @$dependencies, $dep;
-            calc_deps($tree, $prev, $dependencies, $dep->depth);
-        }
+    );
 
-        $prev = $dep;
+    my $result = JSON::decode_json($response->{content});
+
+    my $dependencies = $result->{hits}->{hits}->[0]->{_source}->{dependency};
+
+    my @dependencies;
+    my %dependencies_seen;
+    foreach my $dep_name (@$dependencies) {
+        my $module = $packages_index->package($dep_name->{module});
+        next unless $module;
+
+        my $dist = $module->distribution->dist;
+
+        next if $dist eq 'perl';
+
+        next if $dependencies_seen{$dist}++;
+
+        push @dependencies,
+          {
+            distribution => $dist,
+            pathname     => $module->distribution->pathname,
+            version      => $module->distribution->version,
+          };
     }
+
+    return \@dependencies;
+}
+
+sub distribution_to_stewfile {
+    my ($distribution) = @_;
+
+    my $pkg = dist_to_pkg($distribution->{distribution});
+
+    my $stew_file = "${pkg}_$distribution->{version}.stew";
+
+    if ($repo) {
+        $stew_file = File::Spec->catfile($repo, 'stew', $stew_file);
+    }
+
+    return $stew_file;
 }
