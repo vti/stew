@@ -90,22 +90,31 @@ sub _build_from_source {
     _mkpath $work_dir;
     _chdir($work_dir);
 
+    my $sources;
     if ($stew->url) {
         my $src_file = $self->{repo}->mirror_file($stew->url,
             File::Spec->catfile($self->{repo}->{mirror_path}, 'src'));
         _copy($src_file, $work_dir);
+
+        $sources++;
     }
-    else {
+    elsif ($stew->file) {
         my $src_file = $self->{repo}->mirror_src($stew->file);
         _copy($src_file, $work_dir);
+
+        $sources++;
     }
 
     if (my @files = $stew->files) {
         foreach my $file (@files) {
             my $src_file = $self->{repo}->mirror_src($file);
             _copy($src_file, $work_dir);
+
+            $sources++;
         }
     }
+
+    die "No sources provided\n" unless $sources;
 
     debug sprintf "Preparing '%s'...", $stew->package;
     $self->_run_stew_phase($stew, 'prepare');
@@ -119,8 +128,14 @@ sub _build_from_source {
     debug sprintf "Cleaning '%s'...", $stew->package;
     $self->_run_stew_phase($stew, 'cleanup');
 
+    _mkpath "$ENV{DESTDIR}/$ENV{PREFIX}";
     _chdir "$ENV{DESTDIR}/$ENV{PREFIX}";
-    return _tree('.', '.');
+
+    my $files = _tree('.', '.');
+
+    die "Build has not produced any files\n" unless @$files;
+
+    return $files;
 }
 
 sub _run_stew_phase {
@@ -128,10 +143,11 @@ sub _run_stew_phase {
     my ($stew, $phase) = @_;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
+
+    _mkpath $work_dir;
     _chdir($work_dir);
 
-    my @commands = $stew->run($phase);
-    cmd(@commands);
+    $stew->run($phase);
 }
 
 sub _check_dependencies {

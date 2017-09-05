@@ -7,6 +7,7 @@ use HTTP::Tiny;
 use File::Basename qw(dirname basename);
 use File::Path ();
 use Carp qw(croak);
+use Cwd qw(abs_path);
 use App::stew::util qw(error debug _copy _mkpath sort_by_version);
 
 sub new {
@@ -17,6 +18,7 @@ sub new {
     bless $self, $class;
 
     $self->{path} = $params{path} or croak 'path required';
+    $self->{path} = abs_path($self->{path}) unless $self->{path} =~ m/^http/;
     $self->{path} .= '/' unless $self->{path} =~ m{/$};
 
     $self->{mirror_path} = $params{mirror_path} or croak 'mirror_path required';
@@ -35,6 +37,8 @@ sub mirror_stew {
     my $self = shift;
     my ($name) = @_;
 
+    die 'name required' unless $name;
+
     my $full_name =
       $self->{path} . File::Spec->catfile('stew', $name . '.stew');
 
@@ -45,6 +49,8 @@ sub mirror_stew {
 sub mirror_src {
     my $self = shift;
     my ($filename) = @_;
+
+    die 'filename required' unless $filename;
 
     my $full_name = $self->{path} . File::Spec->catfile('src', $filename);
 

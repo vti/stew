@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use File::Copy qw(move);
-use App::stew::file;
+use App::stew::fileparser;
 
 foreach my $file (@ARGV) {
     my $content = do { local $/; open my $fh, '<', $file or die $!; <$fh> };
@@ -18,7 +18,7 @@ foreach my $file (@ARGV) {
     local $ENV{STEW_OS}   = '${OS}';
     local $ENV{STEW_ARCH} = '${ARCH}';
 
-    my $stew = App::stew::file->new->parse("$file.bak");
+    my $stew = App::stew::fileparser->new->parse("$file.bak");
 
     my $yaml = "---\n";
 
@@ -30,8 +30,8 @@ foreach my $file (@ARGV) {
 
     my $package;
     if ($package = $stew->package) {
-        $package =~ s{^$name}{\$\{name\}};
-        $package =~ s{$version$}{\$\{version\}};
+        $package =~ s{^$name}{\{\{name\}\}};
+        $package =~ s{$version$}{\{\{version\}\}};
         $yaml .= "package: $package\n";
     }
 
@@ -46,9 +46,9 @@ foreach my $file (@ARGV) {
 
     if (@all_files) {
         foreach my $source (@all_files) {
-            $source =~ s{^$name}{\$\{name\}};
-            $source =~ s{$version}{\$\{version\}};
-            $source =~ s{\Q$package\E}{\$\{package\}};
+            $source =~ s{^$name}{\{\{name\}\}};
+            $source =~ s{$version}{\{\{version\}\}};
+            $source =~ s{\Q$package\E}{\{\{package\}\}};
         }
 
         $yaml .= "sources:\n";
@@ -67,9 +67,9 @@ foreach my $file (@ARGV) {
             my @commands = $cmd->();
 
             foreach my $command (@commands) {
-                $command =~ s{$name}{\$\{name\}};
-                $command =~ s{$version}{\$\{version\}};
-                $command =~ s{\Q$package\E}{\$\{package\}};
+                $command =~ s{$name}{\{\{name\}\}};
+                $command =~ s{$version}{\{\{version\}\}};
+                $command =~ s{\Q$package\E}{\{\{package\}\}};
             }
 
             $yaml .= "$phase:\n";

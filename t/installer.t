@@ -7,7 +7,7 @@ use File::Basename qw(dirname);
 use File::Path qw(mkpath);
 use File::Copy qw(copy);
 use Cwd qw(abs_path);
-use App::stew::file;
+use App::stew::fileparser;
 use App::stew::snapshot;
 use App::stew::installer;
 use App::stew::repo;
@@ -30,7 +30,7 @@ subtest 'installs from source' => sub {
         build_dir   => $build_dir
     );
 
-    my $stew = App::stew::file->parse("t/repo/stew/single_1.0.stew");
+    my $stew = App::stew::fileparser->parse("t/repo/stew/single_1.0.stew");
 
     $installer->install({stew => $stew});
 
@@ -56,7 +56,7 @@ subtest 'caches binary' => sub {
         build_dir   => $build_dir
     );
 
-    my $stew = App::stew::file->parse("t/repo/stew/single_1.0.stew");
+    my $stew = App::stew::fileparser->parse("t/repo/stew/single_1.0.stew");
 
     $installer->install({stew => $stew});
 
@@ -81,7 +81,7 @@ subtest 'installs from dist when available' => sub {
         build_dir   => $build_dir
     );
 
-    my $stew = App::stew::file->parse("t/repo/stew/single_1.0.stew");
+    my $stew = App::stew::fileparser->parse("t/repo/stew/single_1.0.stew");
 
     $installer->install({stew => $stew});
 

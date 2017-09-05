@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Carp qw(croak);
-use App::stew::file;
+use App::stew::fileparser;
 use App::stew::util qw(error);
 
 sub new {
@@ -86,7 +86,7 @@ sub _parse_stew {
     my $self = shift;
     my ($file) = @_;
 
-    return App::stew::file->parse($file);
+    return App::stew::fileparser->parse($file);
 }
 
 1;
