@@ -16,12 +16,14 @@ my $repo;
 my $local;
 my $cpanfile;
 my $stewfile;
+my $yaml;
 GetOptions(
     "cpan=s"     => \$cpan,
     "repo=s"     => \$repo,
     "cpanfile=s" => \$cpanfile,
     "stewfile=s" => \$stewfile,
-    "local"      => \$local
+    "local"      => \$local,
+    "yaml"       => \$yaml
 ) or die("Error in command line arguments\n");
 
 die '--cpan is required' unless $cpan;
@@ -69,9 +71,9 @@ sub gen_tree {
 
     return if $gen_tree_seen{$distribution->{pathname}}++;
 
-    my $dependencies = distribution_dependencies($distribution);
+    my $meta = distribution_meta($distribution);
 
-    foreach my $dependency (@$dependencies) {
+    foreach my $dependency (@{ $meta->{dependencies} }) {
         if (-f distribution_to_stewfile($distribution)) {
             next;
         }
@@ -82,7 +84,7 @@ sub gen_tree {
     warn
 "Generating stewfile for $distribution->{distribution}-$distribution->{version}\n";
 
-    my $ok = gen_stew($distribution, $dependencies);
+    my $ok = gen_stew($distribution, $meta);
 
     if ($ok && $stewfile) {
         open my $fh, '>>', $stewfile or die "Can't open stewfile: $!\n";
@@ -102,18 +104,17 @@ sub dist_to_pkg {
 my %gen_stew_seen;
 
 sub gen_stew {
-    my ($distribution, $dependencies) = @_;
+    my ($distribution, $meta) = @_;
 
     return if $gen_stew_seen{$distribution->{pathname}}++;
+
+    my $dependencies = $meta->{dependencies};
 
     my $pkg     = dist_to_pkg($distribution->{distribution});
     my $version = $distribution->{version};
 
     my $dist     = $distribution->{distribution};
     my $pathname = $distribution->{pathname};
-    my $deps     = join ', ',
-      map { "'$_'" } map { dist_to_pkg($_->{distribution}) } @$dependencies;
-    $deps = ', ' . $deps if $deps;
 
     my $file = basename($pathname);
     my ($name) = $file =~ m/^(.*)(?:\.tar.gz|\.tgz)$/;
@@ -139,6 +140,261 @@ sub gen_stew {
     if (!$local) {
         $options = qq{\$url     = "$dist_url";};
     }
+
+    my $builder = 'build';
+
+    if ($distribution->{distribution} eq 'ExtUtils-MakeMaker'
+        || grep { $_->{distribution} eq 'ExtUtils-MakeMaker' } @$dependencies)
+    {
+        $builder = 'make_maker';
+    }
+
+    if ($yaml) {
+        _write_yaml(
+            $stew_file,
+            {
+                name    => $name,
+                pkg     => $pkg,
+                version => $version,
+                deps    => $dependencies,
+                file    => $file,
+                sources => $local ? $file : $dist_url,
+                options => $options,
+                builder => $builder
+            }
+        );
+    }
+    else {
+        _write_perl(
+            $stew_file,
+            {
+                name    => $name,
+                pkg     => $pkg,
+                version => $version,
+                deps    => $dependencies,
+                file    => $file,
+                options => $options
+            }
+        );
+    }
+
+    print "ok\n";
+
+    return 1;
+}
+
+sub resolve_package {
+    my ($package) = @_;
+
+    my $info = $packages_index->package($package);
+    return unless $info;
+
+    return {
+        package      => $info->package,
+        distribution => $info->distribution->dist,
+        version      => $info->distribution->version,
+        pathname     => $info->distribution->pathname,
+    };
+}
+
+sub create_packages_index {
+    my ($cpan) = @_;
+
+    my $details_file_url = "$cpan/modules/02packages.details.txt.gz";
+    my $details_file     = basename $details_file_url;
+
+    my $ua = HTTP::Tiny->new;
+
+    print "Mirroring '$details_file_url' -> '$details_file'...\n";
+    my $response = $ua->mirror($details_file_url, $details_file);
+
+    die "Failed: $response->{reason}: $response->{content}\n"
+      unless $response->{success};
+
+    return Parse::CPAN::Packages::Fast->new($details_file);
+}
+
+sub distribution_meta {
+    my ($distribution) = @_;
+
+    my $ua       = HTTP::Tiny->new;
+    my $response = $ua->post(
+        'http://fastapi.metacpan.org/v1/release/_search',
+        {
+            content => JSON::encode_json(
+                {
+                    query  => {match_all => {}},
+                    filter => {
+                        and => [
+                            $distribution->{version}
+                            ? (
+                                {
+                                    term => {
+                                        version => '' . $distribution->{version}
+                                    }
+                                },
+                              )
+                            : (),
+                            {
+                                term => {
+                                    distribution =>
+                                      $distribution->{distribution}
+                                }
+                            }
+                        ]
+                    },
+                    size => 1
+                }
+            )
+        }
+    );
+
+    my $result = JSON::decode_json($response->{content});
+
+    $result = $result->{hits}->{hits}->[0];
+
+    my $runtime =
+      $result->{_source}->{metadata}->{prereqs}->{runtime}->{requires};
+    my $configure =
+      $result->{_source}->{metadata}->{prereqs}->{configure}->{requires};
+
+    my $prereqs = {%$runtime, %$configure};
+
+    my @dependencies;
+    my %dependencies_seen;
+    foreach my $dep_name (sort keys %$prereqs) {
+        my $module = $packages_index->package($dep_name);
+        next unless $module;
+
+        my $dist = $module->distribution->dist;
+
+        next if $dist eq 'perl';
+
+        next if $dependencies_seen{$dist}++;
+
+        push @dependencies,
+          {
+            distribution => $dist,
+            pathname     => $module->distribution->pathname,
+            version      => $module->distribution->version,
+          };
+    }
+
+    return {
+        distribution => $distribution,
+        dependencies => \@dependencies
+    };
+}
+
+sub distribution_to_stewfile {
+    my ($distribution) = @_;
+
+    my $pkg = dist_to_pkg($distribution->{distribution});
+
+    my $stew_file = "${pkg}_$distribution->{version}.stew";
+
+    if ($repo) {
+        $stew_file = File::Spec->catfile($repo, 'stew', $stew_file);
+    }
+
+    return $stew_file;
+}
+
+sub _write_yaml {
+    my ($stew_file, $params) = @_;
+
+    my $name    = $params->{name};
+    my $pkg     = $params->{pkg};
+    my $version = $params->{version};
+    my $deps    = $params->{deps};
+    my $file    = $params->{file};
+    my $sources = $params->{sources};
+    my $options = $params->{options};
+    my $builder = $params->{builder};
+
+    $deps = join "\n",
+      map { "    - $_" } map { dist_to_pkg($_->{distribution}) } @$deps;
+    $deps = "\n" . $deps if $deps;
+
+    open my $fh, '>', $stew_file or die $!;
+    print $fh <<"EOF";
+---
+# Auto generated by cpan2stew
+name: $pkg
+version: $version
+package: {{name}}-{{version}}
+sources: $sources
+depends:
+    - perl$deps
+prepare:
+    - cmd: "tar xzf '$file'"
+build:
+    - chdir: $name
+    - cmd: "unset PERL5LIB PERL_MM_OPT PERL_MB_OPT PERL_LOCAL_LIB_ROOT"
+    - env:
+        PERL_MM_USE_DEFAULT: 1
+        MODULEBUILDRC: /dev/null
+        PERL_AUTOINSTALL: --skipdeps
+        PERL5LIB: \${DESTDIR}/{{PREFIX}}/lib/perl5/vendor_perl
+EOF
+
+    if ($builder eq 'build') {
+        print $fh <<"EOF";
+    - cmd: perl Build.PL
+    - cmd: ./Build
+EOF
+    }
+    else {
+        print $fh <<"EOF";
+    - cmd: perl Makefile.PL
+    - cmd: make
+EOF
+    }
+
+    print $fh <<"EOF";
+install:
+    - chdir: $name
+    - cmd: "unset PERL5LIB PERL_MM_OPT PERL_MB_OPT PERL_LOCAL_LIB_ROOT"
+    - env:
+        PERL5LIB: \${DESTDIR}/{{PREFIX}}/lib/perl5/vendor_perl
+EOF
+
+    if ($builder eq 'build') {
+        print $fh <<"EOF";
+    - cmd: ./Build install --installdirs=vendor --destdir=\${DESTDIR}
+EOF
+    }
+    else {
+        print $fh <<"EOF";
+    - cmd: perl Makefile.PL
+    - cmd: make install INSTALLDIRS=vendor DESTDIR=\${DESTDIR}
+EOF
+    }
+
+    print $fh <<"EOF";
+cleanup:
+    - chdir: \${DESTDIR}
+    - cmd: "find . -name 'perllocal.pod' -exec rm -f {} \\\\;"
+    - cmd: "find . -name '.packlist' -exec rm -f {} \\\\;"
+    - cmd: "find . -type d -empty -delete"
+EOF
+
+    close $fh;
+}
+
+sub _write_perl {
+    my ($stew_file, $params) = @_;
+
+    my $name    = $params->{name};
+    my $pkg     = $params->{pkg};
+    my $version = $params->{version};
+    my $deps    = $params->{deps};
+    my $file    = $params->{file};
+    my $options = $params->{options};
+
+    $deps = join ', ',
+      map { "'$_'" } map { dist_to_pkg($_->{distribution}) } @$deps;
+    $deps = ', ' . $deps if $deps;
 
     open my $fh, '>', $stew_file or die $!;
     print $fh <<"EOF";
@@ -184,112 +440,4 @@ cleanup {
 EOF
 
     close $fh;
-
-    print "ok\n";
-
-    return 1;
-}
-
-sub resolve_package {
-    my ($package) = @_;
-
-    my $info = $packages_index->package($package);
-    return unless $info;
-
-    return {
-        package      => $info->package,
-        distribution => $info->distribution->dist,
-        version      => $info->distribution->version,
-        pathname     => $info->distribution->pathname,
-    };
-}
-
-sub create_packages_index {
-    my ($cpan) = @_;
-
-    my $details_file_url = "$cpan/modules/02packages.details.txt.gz";
-    my $details_file     = basename $details_file_url;
-
-    my $ua = HTTP::Tiny->new;
-
-    print "Mirroring '$details_file_url' -> '$details_file'...\n";
-    my $response = $ua->mirror($details_file_url, $details_file);
-
-    die "Failed: $response->{reason}: $response->{content}\n"
-      unless $response->{success};
-
-    return Parse::CPAN::Packages::Fast->new($details_file);
-}
-
-sub distribution_dependencies {
-    my ($distribution) = @_;
-
-    my $ua       = HTTP::Tiny->new;
-    my $response = $ua->post(
-        'http://fastapi.metacpan.org/v1/release/_search',
-        {
-            content => JSON::encode_json(
-                {
-                    query  => {match_all => {}},
-                    filter => {
-                        and => [
-                            {
-                                term =>
-                                  {version => '' . $distribution->{version}}
-                            },
-                            {
-                                term => {
-                                    distribution =>
-                                      $distribution->{distribution}
-                                }
-                            }
-                        ]
-                    },
-                    size => 1
-                }
-            )
-        }
-    );
-
-    my $result = JSON::decode_json($response->{content});
-
-    my $runtime =
-      $result->{hits}->{hits}->[0]->{_source}->{metadata}->{prereqs}->{runtime}
-      ->{requires};
-
-    my @dependencies;
-    my %dependencies_seen;
-    foreach my $dep_name (sort keys %$runtime) {
-        my $module = $packages_index->package($dep_name);
-        next unless $module;
-
-        my $dist = $module->distribution->dist;
-
-        next if $dist eq 'perl';
-
-        next if $dependencies_seen{$dist}++;
-
-        push @dependencies,
-          {
-            distribution => $dist,
-            pathname     => $module->distribution->pathname,
-            version      => $module->distribution->version,
-          };
-    }
-
-    return \@dependencies;
-}
-
-sub distribution_to_stewfile {
-    my ($distribution) = @_;
-
-    my $pkg = dist_to_pkg($distribution->{distribution});
-
-    my $stew_file = "${pkg}_$distribution->{version}.stew";
-
-    if ($repo) {
-        $stew_file = File::Spec->catfile($repo, 'stew', $stew_file);
-    }
-
-    return $stew_file;
 }

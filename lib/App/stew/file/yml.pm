@@ -105,6 +105,11 @@ sub run {
 
             _chdir($chdir);
         }
+        elsif (my $env = $step->{env}) {
+            foreach my $key (keys %$env) {
+                $ENV{$key} = $env->{$key};
+            }
+        }
     }
 
     _chdir($cwd);
@@ -139,9 +144,7 @@ sub _parse_dynamic_var {
     my $self = shift;
     my ($template) = @_;
 
-    warn "template=$template";
     $template =~ s/\$\{([_a-zA-Z0-9]+)\}/$ENV{$1}/ge;
-    warn "template>$template";
 
     return $template;
 }
