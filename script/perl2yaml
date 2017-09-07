@@ -13,10 +13,10 @@ foreach my $file (@ARGV) {
 
     move("$file", "$file.bak");
 
-    local $ENV{PREFIX}    = '${PREFIX}';
+    local $ENV{PREFIX}    = '{{PREFIX}}';
     local $ENV{DESTDIR}   = '${DESTDIR}';
-    local $ENV{STEW_OS}   = '${OS}';
-    local $ENV{STEW_ARCH} = '${ARCH}';
+    local $ENV{STEW_OS}   = '{{OS}}';
+    local $ENV{STEW_ARCH} = '{{ARCH}}';
 
     my $stew = App::stew::fileparser->new->parse("$file.bak");
 
@@ -32,7 +32,7 @@ foreach my $file (@ARGV) {
     if ($package = $stew->package) {
         $package =~ s{^$name}{\{\{name\}\}};
         $package =~ s{$version$}{\{\{version\}\}};
-        $yaml .= "package: $package\n";
+        $yaml .= "package: " . _quote_line($package) . "\n";
     }
 
     my @all_files;
@@ -52,7 +52,7 @@ foreach my $file (@ARGV) {
         }
 
         $yaml .= "sources:\n";
-        $yaml .= join("\n", map { "    - $_" } @all_files);
+        $yaml .= join("\n", map { "    - " . _quote_line($_) } @all_files);
         $yaml .= "\n";
     }
 
@@ -73,7 +73,24 @@ foreach my $file (@ARGV) {
             }
 
             $yaml .= "$phase:\n";
-            $yaml .= join("\n", map { "    - " . _command($_) } @commands);
+
+            my @commands_yaml;
+
+            foreach my $command (@commands) {
+                my $parsed_command = _command($command);
+
+                if ($parsed_command =~ m/cd '?([^\']+)'?/) {
+                    my $chdir = $1;
+
+                    push @commands_yaml, "    - chdir: " . _quote_line($chdir);
+                }
+                else {
+                    push @commands_yaml, "    - cmd: " . _quote_line($parsed_command);
+                }
+            }
+
+            $yaml .= join("\n", @commands_yaml);
+
             $yaml .= "\n";
         }
     }
@@ -93,4 +110,14 @@ sub _command {
     my @lines = split /\r?\n/, $command;
 
     return ">\n    " . join("\n", map { "    $_" } @lines);
+}
+
+sub _quote_line {
+    my ($line) = @_;
+
+    if ( $line =~ m/^\{\{/ ) {
+        $line = qq{"$line"};
+    }
+
+    return $line;
 }
