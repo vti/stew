@@ -4,17 +4,21 @@ use strict;
 use warnings;
 
 use JSON ();
+use CPAN::Version;
 use Getopt::Long;
 use File::Basename qw(basename);
 use CPAN::DistnameInfo;
+use Module::CoreList;
 use Parse::CPAN::Packages::Fast;
 use File::Spec;
 use HTTP::Tiny;
 
 my $cpan = 'cpan.org';
 my $repo;
+my $perl;
 my $local;
 my $cpanfile;
+my $force;
 my $stewfile;
 my $yaml;
 GetOptions(
@@ -23,6 +27,8 @@ GetOptions(
     "cpanfile=s" => \$cpanfile,
     "stewfile=s" => \$stewfile,
     "local"      => \$local,
+    "force"      => \$force,
+    "perl=s"     => \$perl,
     "yaml"       => \$yaml
 ) or die("Error in command line arguments\n");
 
@@ -44,6 +50,8 @@ die "Usage: [options] <package1> <package2>\n" unless @packages;
 my $packages_index = create_packages_index($cpan);
 
 foreach my $package (@packages) {
+    next if $package eq 'perl';
+
     print "Working on '$package'...\n";
 
     my $distribution = resolve_package($package);
@@ -54,7 +62,7 @@ foreach my $package (@packages) {
 
     next if $distribution->{distribution} eq 'perl';
 
-    if (-f distribution_to_stewfile($distribution)) {
+    if (!$force && -f distribution_to_stewfile($distribution)) {
         next;
     }
 
@@ -64,25 +72,28 @@ foreach my $package (@packages) {
     gen_tree($distribution);
 }
 
+print "\nDone\n";
+
 my %gen_tree_seen;
 
 sub gen_tree {
     my ($distribution) = @_;
 
-    return if $gen_tree_seen{$distribution->{pathname}}++;
+    return if !$force && $gen_tree_seen{$distribution->{pathname}}++;
 
     my $meta = distribution_meta($distribution);
 
-    foreach my $dependency (@{ $meta->{dependencies} }) {
-        if (-f distribution_to_stewfile($distribution)) {
+    foreach my $dependency (@{$meta->{dependencies}}) {
+        if (!$force && -f distribution_to_stewfile($dependency)) {
             next;
         }
 
         gen_tree($dependency);
     }
 
-    warn
-"Generating stewfile for $distribution->{distribution}-$distribution->{version}\n";
+    warn sprintf "Generating stewfile for %s-%s (%s)\n",
+      $distribution->{distribution}, $distribution->{version},
+      distribution_to_stewfile($distribution);
 
     my $ok = gen_stew($distribution, $meta);
 
@@ -106,7 +117,7 @@ my %gen_stew_seen;
 sub gen_stew {
     my ($distribution, $meta) = @_;
 
-    return if $gen_stew_seen{$distribution->{pathname}}++;
+    return if !$force && $gen_stew_seen{$distribution->{pathname}}++;
 
     my $dependencies = $meta->{dependencies};
 
@@ -120,8 +131,6 @@ sub gen_stew {
     my ($name) = $file =~ m/^(.*)(?:\.tar.gz|\.tgz)$/;
 
     my $stew_file = distribution_to_stewfile($distribution);
-
-    print "Generating $stew_file ...\n";
 
     my $dist_url = "$cpan/authors/id/$pathname";
 
@@ -177,8 +186,6 @@ sub gen_stew {
             }
         );
     }
-
-    print "ok\n";
 
     return 1;
 }
@@ -254,9 +261,9 @@ sub distribution_meta {
     $result = $result->{hits}->{hits}->[0];
 
     my $runtime =
-      $result->{_source}->{metadata}->{prereqs}->{runtime}->{requires};
+      $result->{_source}->{metadata}->{prereqs}->{runtime}->{requires} // {};
     my $configure =
-      $result->{_source}->{metadata}->{prereqs}->{configure}->{requires};
+      $result->{_source}->{metadata}->{prereqs}->{configure}->{requires} // {};
 
     my $prereqs = {%$runtime, %$configure};
 
@@ -266,15 +273,30 @@ sub distribution_meta {
         my $module = $packages_index->package($dep_name);
         next unless $module;
 
-        my $dist = $module->distribution->dist;
+        my $pathname = $module->distribution->pathname;
+        my $dist     = $module->distribution->dist;
+
+        next if $gen_tree_seen{$pathname};
+        next if $gen_stew_seen{$pathname};
 
         next if $dist eq 'perl';
 
         next if $dependencies_seen{$dist}++;
 
+        my $core = Module::CoreList->first_release($dep_name, $module->distribution->version);
+        if ($core && $perl && CPAN::Version->vcmp($perl, $core) > 0) {
+            warn "Skipping $dep_name (comes with perl-$perl)\n";
+
+            $gen_tree_seen{$pathname}++;
+            $gen_stew_seen{$pathname}++;
+
+            next;
+        }
+
         push @dependencies,
           {
             distribution => $dist,
+            package      => $dep_name,
             pathname     => $module->distribution->pathname,
             version      => $module->distribution->version,
           };
