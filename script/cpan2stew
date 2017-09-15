@@ -69,7 +69,7 @@ foreach my $package (@packages) {
     print
       "$package -> $distribution->{distribution}-$distribution->{version}\n";
 
-    gen_tree($distribution);
+    gen_tree($distribution, root => 1);
 }
 
 print "\nDone\n";
@@ -77,9 +77,9 @@ print "\nDone\n";
 my %gen_tree_seen;
 
 sub gen_tree {
-    my ($distribution) = @_;
+    my ($distribution, %params) = @_;
 
-    return if !$force && $gen_tree_seen{$distribution->{pathname}}++;
+    return if $gen_tree_seen{$distribution->{pathname}}++;
 
     my $meta = distribution_meta($distribution);
 
@@ -97,7 +97,7 @@ sub gen_tree {
 
     my $ok = gen_stew($distribution, $meta);
 
-    if ($ok && $stewfile) {
+    if ($ok && $stewfile && $params{root}) {
         open my $fh, '>>', $stewfile or die "Can't open stewfile: $!\n";
         print $fh dist_to_pkg($distribution->{distribution}), "\n";
         close $fh;
