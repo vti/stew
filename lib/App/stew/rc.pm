@@ -18,7 +18,11 @@ sub load {
     my $self = shift;
 
     my $file = '.stewrc';
-    for ('.', $ENV{HOME}) {
+
+    my @paths = '.';
+    push @paths, $ENV{HOME} if defined $ENV{HOME};
+
+    for (@paths) {
         my $path = File::Spec->catfile($_, $file);
 
         return $self->parse($path) if -f $path;
