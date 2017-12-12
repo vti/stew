@@ -35,6 +35,7 @@ sub run {
     my $opt_reinstall;
     my $opt_keep_files;
     my $opt_cache;
+    my $opt_stewfile;
     my $opt_help;
     GetOptionsFromArray(
         \@argv,
@@ -52,6 +53,7 @@ sub run {
         "reinstall"             => \$opt_reinstall,
         "keep-files"            => \$opt_keep_files,
         "cache"                 => \$opt_cache,
+        "stewfile=s"            => \$opt_stewfile,
         "help"                  => \$opt_help,
     ) or die "error";
 
@@ -62,11 +64,6 @@ sub run {
 
     error("--base is required") unless $opt_base;
     error("--repo is required") unless $opt_repo;
-
-    if (!@argv) {
-        info 'Nothing to install';
-        return;
-    }
 
     mkpath($opt_base);
     $opt_base = abs_path($opt_base);
@@ -127,10 +124,17 @@ sub run {
         }
     }
 
-    if (@argv == 1 && $argv[0] eq '.') {
-        die 'stewfile not found' unless -f 'stewfile';
+    if ($opt_stewfile || (@argv == 1 && $argv[0] eq '.')) {
+        my $stewfile = abs_path($opt_stewfile // 'stewfile');
 
-        @argv = grep { $_ && !/^#/ } split /\n+/, slurp_file('stewfile');
+        die "stewfile '$stewfile' not found\n" unless -f $stewfile;
+
+        @argv = grep { $_ && !/^#/ } split /(?:\r?\n)+/, slurp_file($stewfile);
+    }
+
+    if (!@argv) {
+        info 'Nothing to install';
+        return;
     }
 
     $ENV{STEW_OS}   = $opt_os;
