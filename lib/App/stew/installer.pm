@@ -90,6 +90,12 @@ sub install {
         debug "Resolving dependencies...";
         @depends = $self->_install_dependencies($stew, $stew_tree);
 
+        # Skip recursive dependencies
+        if ($self->{snapshot}->is_up_to_date($stew->name, $stew->version)) {
+            debug sprintf "'%s' is up to date", $stew->package;
+            return $self;
+        }
+
         if ($stew->is('cross-platform')) {
             debug 'Cross platform package';
 
@@ -162,6 +168,7 @@ sub _install_from_binary {
     my $basename = basename $dist_path;
 
     my $work_dir = File::Spec->catfile($self->{build_dir}, $stew->package);
+    _mkpath $work_dir;
     _chdir $work_dir;
 
     my ($dist_name) = $basename =~ m/^(.*)\.tar\.gz$/;
