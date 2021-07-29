@@ -10,10 +10,11 @@ use File::Basename qw(basename);
 use CPAN::DistnameInfo;
 use Module::CoreList;
 use Parse::CPAN::Packages::Fast;
+use File::Temp;
 use File::Spec;
 use HTTP::Tiny;
 
-my $cpan = 'cpan.org';
+my @cpan;
 my $repo;
 my $perl;
 my $local;
@@ -22,7 +23,7 @@ my $force;
 my $stewfile;
 my $yaml;
 GetOptions(
-    "cpan=s"     => \$cpan,
+    "cpan=s"     => \@cpan,
     "repo=s"     => \$repo,
     "cpanfile=s" => \$cpanfile,
     "stewfile=s" => \$stewfile,
@@ -32,9 +33,13 @@ GetOptions(
     "yaml"       => \$yaml
 ) or die("Error in command line arguments\n");
 
-die '--cpan is required' unless $cpan;
+die '--cpan is required' unless @cpan;
 
-$cpan = "http://$cpan" unless $cpan =~ m{^https?://};
+@cpan = ('cpan.org') unless @cpan;
+
+foreach my $cpan (@cpan) {
+    $cpan = "http://$cpan" unless $cpan =~ m{^https?://};
+}
 
 my @packages = @ARGV;
 if ($cpanfile) {
@@ -47,7 +52,15 @@ if ($cpanfile) {
 }
 die "Usage: [options] <package1> <package2>\n" unless @packages;
 
-my $packages_index = create_packages_index($cpan);
+my @packages_indexes;
+
+foreach my $cpan (@cpan) {
+    push @packages_indexes,
+      {
+        cpan  => $cpan,
+        index => create_packages_index($cpan, scalar @packages_indexes)
+      };
+}
 
 foreach my $package (@packages) {
     next if $package eq 'perl';
@@ -132,7 +145,7 @@ sub gen_stew {
 
     my $stew_file = distribution_to_stewfile($distribution);
 
-    my $dist_url = "$cpan/authors/id/$pathname";
+    my $dist_url = "$distribution->{cpan}/authors/id/$pathname";
 
     if ($local && $repo) {
         my $ua = HTTP::Tiny->new;
@@ -193,22 +206,32 @@ sub gen_stew {
 sub resolve_package {
     my ($package) = @_;
 
-    my $info = $packages_index->package($package);
-    return unless $info;
+    foreach my $packages_index (@packages_indexes) {
+        my $info = $packages_index->{index}->package($package);
+        next unless $info;
 
-    return {
-        package      => $info->package,
-        distribution => $info->distribution->dist,
-        version      => $info->distribution->version,
-        pathname     => $info->distribution->pathname,
-    };
+        return {
+            package      => $info->package,
+            distribution => $info->distribution->dist,
+            version      => $info->distribution->version,
+            pathname     => $info->distribution->pathname,
+            cpan         => $packages_index->{cpan},
+            url          => sprintf(
+                '%s/authors/id/%s',
+                $packages_index->{cpan},
+                $info->distribution->pathname
+            )
+        };
+    }
+
+    return;
 }
 
 sub create_packages_index {
-    my ($cpan) = @_;
+    my ($cpan, $index) = @_;
 
     my $details_file_url = "$cpan/modules/02packages.details.txt.gz";
-    my $details_file     = basename $details_file_url;
+    my $details_file     = $index . basename($details_file_url);
 
     my $ua = HTTP::Tiny->new;
 
@@ -224,7 +247,85 @@ sub create_packages_index {
 sub distribution_meta {
     my ($distribution) = @_;
 
-    my $ua       = HTTP::Tiny->new;
+    my @dep_names = distribution_deps($distribution);
+
+    my @dependencies;
+    my %dependencies_seen;
+    foreach my $dep_name (@dep_names) {
+        my $module;
+
+        foreach my $packages_index (@packages_indexes) {
+            $module = $packages_index->{index}->package($dep_name);
+            next unless $module;
+        }
+
+        next unless $module;
+
+        my $pathname = $module->distribution->pathname;
+        my $dist     = $module->distribution->dist;
+
+        next if $gen_tree_seen{$pathname};
+        next if $gen_stew_seen{$pathname};
+
+        next if $dist eq 'perl';
+
+        next if $dependencies_seen{$dist}++;
+
+        my $core = Module::CoreList->first_release($dep_name, $module->distribution->version);
+        if ($core && $perl && CPAN::Version->vcmp($perl, $core) > 0) {
+            warn "Skipping $dep_name (comes with perl-$perl)\n";
+
+            $gen_tree_seen{$pathname}++;
+            $gen_stew_seen{$pathname}++;
+
+            next;
+        }
+
+        push @dependencies,
+          {
+            distribution => $dist,
+            package      => $dep_name,
+            pathname     => $module->distribution->pathname,
+            version      => $module->distribution->version,
+            cpan         => $distribution->{cpan},
+          };
+    }
+
+    return {
+        distribution => $distribution,
+        dependencies => \@dependencies
+    };
+}
+
+sub distribution_deps {
+    my ($distribution) = @_;
+
+    my $ua = HTTP::Tiny->new;
+
+    my $meta_response = $ua->get($distribution->{url});
+
+    if ($meta_response->{success}) {
+        my $dist = "$distribution->{distribution}-$distribution->{version}";
+
+        my $tempfile = File::Temp->new;
+        print $tempfile $meta_response->{content};
+        my $tempfile_filename = $tempfile->filename;
+
+        my $meta = `tar -O -xf $tempfile_filename $dist/META.json`;
+
+        if ($meta) {
+            eval { $meta = JSON::decode_json($meta) };
+
+            if ($meta && ref $meta eq 'HASH') {
+                my $prereqs = {%{$meta->{prereqs}->{runtime}->{requires}}, %{$meta->{prereqs}->{configure}->{requires}}};
+
+                my @dep_names = sort keys %$prereqs;
+
+                return @dep_names;
+            }
+        }
+    }
+
     my $response = $ua->post(
         'http://fastapi.metacpan.org/v1/release/_search',
         {
@@ -267,45 +368,9 @@ sub distribution_meta {
 
     my $prereqs = {%$runtime, %$configure};
 
-    my @dependencies;
-    my %dependencies_seen;
-    foreach my $dep_name (sort keys %$prereqs) {
-        my $module = $packages_index->package($dep_name);
-        next unless $module;
+    my @dep_names = sort keys %$prereqs;
 
-        my $pathname = $module->distribution->pathname;
-        my $dist     = $module->distribution->dist;
-
-        next if $gen_tree_seen{$pathname};
-        next if $gen_stew_seen{$pathname};
-
-        next if $dist eq 'perl';
-
-        next if $dependencies_seen{$dist}++;
-
-        my $core = Module::CoreList->first_release($dep_name, $module->distribution->version);
-        if ($core && $perl && CPAN::Version->vcmp($perl, $core) > 0) {
-            warn "Skipping $dep_name (comes with perl-$perl)\n";
-
-            $gen_tree_seen{$pathname}++;
-            $gen_stew_seen{$pathname}++;
-
-            next;
-        }
-
-        push @dependencies,
-          {
-            distribution => $dist,
-            package      => $dep_name,
-            pathname     => $module->distribution->pathname,
-            version      => $module->distribution->version,
-          };
-    }
-
-    return {
-        distribution => $distribution,
-        dependencies => \@dependencies
-    };
+    return @dep_names;
 }
 
 sub distribution_to_stewfile {
